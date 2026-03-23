@@ -157,4 +157,4 @@ public class Main extends JFrame {
 
 
 }
-// chang qi is not cool
+// chang qi is cool
