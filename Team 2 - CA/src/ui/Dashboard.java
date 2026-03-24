@@ -110,10 +110,7 @@ public class Dashboard extends JFrame {
 
         JButton processSale = new JButton("Process Sale");
         processSale.setFont(new Font("Arial", Font.PLAIN, 16));
-        processSale.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Process Sale — coming soon");
-            // TODO: open ProcessSaleUI
-        });
+        processSale.addActionListener(e -> new ProcessSaleUI(currentUser));
 
         JButton maintainStock = new JButton("Maintain Local Stock");
         maintainStock.setFont(new Font("Arial", Font.PLAIN, 16));
