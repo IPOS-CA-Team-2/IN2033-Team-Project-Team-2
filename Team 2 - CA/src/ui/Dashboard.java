@@ -89,10 +89,7 @@ public class Dashboard extends JFrame {
 
         JButton viewStock = new JButton("View Stock");
         viewStock.setFont(new Font("Arial", Font.PLAIN, 16));
-        viewStock.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Stock Management — coming soon");
-            // TODO: open StockManagementUI
-        });
+        viewStock.addActionListener(e -> new StockManagementUI());
 
         JButton viewReports = new JButton("View Reports");
         viewReports.setFont(new Font("Arial", Font.PLAIN, 16));
@@ -120,10 +117,7 @@ public class Dashboard extends JFrame {
 
         JButton maintainStock = new JButton("Maintain Local Stock");
         maintainStock.setFont(new Font("Arial", Font.PLAIN, 16));
-        maintainStock.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Stock Management — coming soon");
-            // TODO: open StockManagementUI
-        });
+        maintainStock.addActionListener(e -> new StockManagementUI());
 
         JButton checkAccounts = new JButton("Customer Accounts");
         checkAccounts.setFont(new Font("Arial", Font.PLAIN, 16));
