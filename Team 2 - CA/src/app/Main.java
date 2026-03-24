@@ -61,6 +61,9 @@ public class Main extends JFrame {
         panel.add(new JLabel());
         panel.add(loginButton);
 
+        // pressing enter on either field triggers login
+        frame.getRootPane().setDefaultButton(loginButton);
+
         loginButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
