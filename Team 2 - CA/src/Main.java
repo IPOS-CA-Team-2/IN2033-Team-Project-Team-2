@@ -63,11 +63,7 @@ public class Main extends JFrame {
                     User user = loginService.login(username, password);
                     // Login successful — close login screen and route to dashboard
                     frame.dispose();
-                    JOptionPane.showMessageDialog(null,
-                        "Welcome, " + user.getName() + "! (" + user.getRole() + ")",
-                        "Login Successful",
-                        JOptionPane.INFORMATION_MESSAGE);
-                    // TODO: pass user to Dashboard (Asma's task)
+                    new Dashboard(user);
                 } catch (AuthException ex) {
                     JOptionPane.showMessageDialog(frame,
                         ex.getMessage(),
