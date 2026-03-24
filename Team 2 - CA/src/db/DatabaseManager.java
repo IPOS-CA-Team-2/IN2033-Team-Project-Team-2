@@ -51,6 +51,28 @@ public class DatabaseManager {
                     ('pharma1',  'pass456', 'Pharmacist',  'Bob'),
                     ('manager1', 'pass789', 'Manager',     'Carol')
             """);
+
+            // Create stock table
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS stock (
+                    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name                TEXT NOT NULL,
+                    quantity            INTEGER NOT NULL DEFAULT 0,
+                    unit_price          REAL NOT NULL,
+                    vat_rate            REAL NOT NULL DEFAULT 0.20,
+                    low_stock_threshold INTEGER NOT NULL DEFAULT 10
+                )
+            """);
+
+            // Seed sample stock items if table is empty
+            stmt.execute("""
+                INSERT OR IGNORE INTO stock (id, name, quantity, unit_price, vat_rate, low_stock_threshold) VALUES
+                    (1, 'Paracetamol 500mg',    200, 2.49, 0.00, 20),
+                    (2, 'Ibuprofen 200mg',      150, 3.99, 0.00, 15),
+                    (3, 'Amoxicillin 250mg',     8,  8.99, 0.00, 10),
+                    (4, 'Cetirizine 10mg',       60, 4.49, 0.00, 10),
+                    (5, 'Omeprazole 20mg',        5, 6.99, 0.00, 10)
+            """);
         }
     }
 }
