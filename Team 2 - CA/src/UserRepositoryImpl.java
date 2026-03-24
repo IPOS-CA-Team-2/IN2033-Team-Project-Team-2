@@ -1,30 +1,49 @@
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 /**
- * Concrete implementation of UserRepository.
- *
- * Currently backed by hardcoded seed users (one per role).
- * Replace with DatabaseManager lookups once Samuel's DB layer is ready.
+ * Concrete implementation of UserRepository backed by MySQL.
  */
 public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public User findByUsername(String username) {
-        // Basic validation
         if (username == null || username.isBlank()) {
             return null;
         }
 
-        String searchName = username.trim();
+        String sql = "SELECT username, password, role, name FROM users WHERE username = ?";
 
-        // Seed users — swap these out for DB lookups when Samuel's layer is ready
-        if (searchName.equals("admin1")) {
-            return new Admin("admin1", "pass123", "Alice");
-        } else if (searchName.equals("pharma1")) {
-            return new Pharmacist("pharma1", "pass456", "Bob");
-        } else if (searchName.equals("manager1")) {
-            return new Manager("manager1", "pass789", "Carol");
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, username.trim());
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                String uname = rs.getString("username");
+                String pass  = rs.getString("password");
+                String role  = rs.getString("role");
+                String name  = rs.getString("name");
+
+                switch (role) {
+                    case "Admin":
+                        return new Admin(uname, pass, name);
+                    case "Pharmacist":
+                        return new Pharmacist(uname, pass, name);
+                    case "Manager":
+                        return new Manager(uname, pass, name);
+                    default:
+                        return null;
+                }
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Database error in findByUsername: " + e.getMessage());
         }
 
-        // No matching user found
         return null;
     }
 
