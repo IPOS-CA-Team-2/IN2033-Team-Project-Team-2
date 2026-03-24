@@ -61,6 +61,38 @@ public class DatabaseManager {
                 )
             """);
 
+            // customers table — account holders with credit, discount, and status tracking
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS customers (
+                    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name                TEXT NOT NULL,
+                    address             TEXT,
+                    account_number      TEXT NOT NULL UNIQUE,
+                    credit_limit        REAL NOT NULL DEFAULT 500.0,
+                    current_balance     REAL NOT NULL DEFAULT 0.0,
+                    monthly_spend       REAL NOT NULL DEFAULT 0.0,
+                    discount_type       TEXT NOT NULL DEFAULT 'NONE',
+                    fixed_discount_rate REAL NOT NULL DEFAULT 0.0,
+                    status              TEXT NOT NULL DEFAULT 'NORMAL',
+                    status_1st_reminder TEXT NOT NULL DEFAULT 'no_need',
+                    status_2nd_reminder TEXT NOT NULL DEFAULT 'no_need',
+                    date_1st_reminder   TEXT,
+                    date_2nd_reminder   TEXT,
+                    statement_date      TEXT
+                )
+            """);
+
+            // seed sample account holders
+            stmt.execute("""
+                INSERT OR IGNORE INTO customers
+                    (name, address, account_number, credit_limit, current_balance, monthly_spend,
+                     discount_type, fixed_discount_rate, status, status_1st_reminder, status_2nd_reminder)
+                VALUES
+                    ('J. Smith',    '27 Sainsbury Close, Stratford, Essex EJ6 5TJ', 'CSM000123', 500.0,  0.0, 0.0, 'FIXED',    0.10, 'NORMAL', 'no_need', 'no_need'),
+                    ('A. Johnson',  '14 Maple Avenue, London, SE1 4AB',             'CSM000124', 750.0,  0.0, 0.0, 'FLEXIBLE', 0.00, 'NORMAL', 'no_need', 'no_need'),
+                    ('M. Patel',    '5 Green Lane, Birmingham, B2 7CD',             'CSM000125', 300.0,  0.0, 0.0, 'NONE',     0.00, 'NORMAL', 'no_need', 'no_need')
+            """);
+
             // sales table — one row per transaction
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS sales (

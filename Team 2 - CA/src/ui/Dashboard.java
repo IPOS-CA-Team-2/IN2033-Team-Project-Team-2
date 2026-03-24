@@ -118,10 +118,7 @@ public class Dashboard extends JFrame {
 
         JButton checkAccounts = new JButton("Customer Accounts");
         checkAccounts.setFont(new Font("Arial", Font.PLAIN, 16));
-        checkAccounts.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Customer Accounts — coming soon");
-            // TODO: open CustomerAccountUI
-        });
+        checkAccounts.addActionListener(e -> new CustomerAccountUI(currentUser));
 
         panel.add(processSale);
         panel.add(maintainStock);
@@ -130,8 +127,8 @@ public class Dashboard extends JFrame {
     }
 
     private JPanel buildManagerMenu() {
-        JPanel panel = new JPanel(new GridLayout(4, 1, 20, 20));
-        panel.setBorder(BorderFactory.createEmptyBorder(60, 200, 60, 200));
+        JPanel panel = new JPanel(new GridLayout(5, 1, 20, 20));
+        panel.setBorder(BorderFactory.createEmptyBorder(40, 200, 40, 200));
 
         JButton salesReport = new JButton("Sales / Turnover Report");
         salesReport.setFont(new Font("Arial", Font.PLAIN, 16));
@@ -154,6 +151,10 @@ public class Dashboard extends JFrame {
             // TODO: open ReportsUI
         });
 
+        JButton customerAccounts = new JButton("Customer Accounts");
+        customerAccounts.setFont(new Font("Arial", Font.PLAIN, 16));
+        customerAccounts.addActionListener(e -> new CustomerAccountUI(currentUser));
+
         JButton placeOrder = new JButton("Place Wholesale Order");
         placeOrder.setFont(new Font("Arial", Font.PLAIN, 16));
         placeOrder.addActionListener(e -> {
@@ -164,6 +165,7 @@ public class Dashboard extends JFrame {
         panel.add(salesReport);
         panel.add(stockReport);
         panel.add(debtReport);
+        panel.add(customerAccounts);
         panel.add(placeOrder);
         return panel;
     }
