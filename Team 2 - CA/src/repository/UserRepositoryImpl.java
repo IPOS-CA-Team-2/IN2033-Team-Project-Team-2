@@ -12,7 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- * Concrete implementation of UserRepository backed by MySQL.
+ * Concrete implementation of UserRepository backed by SQLite.
  */
 public class UserRepositoryImpl implements UserRepository {
 
