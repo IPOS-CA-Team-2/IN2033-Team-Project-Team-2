@@ -20,7 +20,8 @@ public class StockRepositoryImpl implements StockRepository {
                 rs.getInt("id"),
                 rs.getString("name"),
                 rs.getInt("quantity"),
-                rs.getDouble("unit_price"),
+                rs.getDouble("bulk_cost"),
+                rs.getDouble("markup_rate"),
                 rs.getDouble("vat_rate"),
                 rs.getInt("low_stock_threshold")
         );
@@ -28,20 +29,17 @@ public class StockRepositoryImpl implements StockRepository {
 
     @Override
     public List<StockItem> findAll() {
-        // get all items sorted by name
-        String sql = "SELECT id, name, quantity, unit_price, vat_rate, low_stock_threshold FROM stock ORDER BY name";
+        String sql = "SELECT id, name, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold FROM stock ORDER BY name";
         List<StockItem> items = new ArrayList<>();
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                items.add(mapRow(rs));
-            }
+            while (rs.next()) items.add(mapRow(rs));
 
         } catch (SQLException e) {
-            System.err.println("Database error in findAll: " + e.getMessage());
+            System.err.println("db error in findAll: " + e.getMessage());
             return Collections.emptyList();
         }
 
@@ -50,21 +48,17 @@ public class StockRepositoryImpl implements StockRepository {
 
     @Override
     public StockItem findById(int itemId) {
-        // get one item by id
-        String sql = "SELECT id, name, quantity, unit_price, vat_rate, low_stock_threshold FROM stock WHERE id = ?";
+        String sql = "SELECT id, name, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold FROM stock WHERE id = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, itemId);
             ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return mapRow(rs);
-            }
+            if (rs.next()) return mapRow(rs);
 
         } catch (SQLException e) {
-            System.err.println("Database error in findById: " + e.getMessage());
+            System.err.println("db error in findById: " + e.getMessage());
         }
 
         return null;
@@ -72,9 +66,8 @@ public class StockRepositoryImpl implements StockRepository {
 
     @Override
     public boolean updateQuantity(int itemId, int newQuantity) {
-        // check qty is valid
         if (newQuantity < 0) {
-            System.err.println("updateQuantity: quantity cannot be negative.");
+            System.err.println("updateQuantity: quantity cannot be negative");
             return false;
         }
 
@@ -88,15 +81,14 @@ public class StockRepositoryImpl implements StockRepository {
             return stmt.executeUpdate() > 0;
 
         } catch (SQLException e) {
-            System.err.println("Database error in updateQuantity: " + e.getMessage());
+            System.err.println("db error in updateQuantity: " + e.getMessage());
             return false;
         }
     }
 
     @Override
     public List<StockItem> findLowStock() {
-        // get items where qty is at or below threshold
-        String sql = "SELECT id, name, quantity, unit_price, vat_rate, low_stock_threshold " +
+        String sql = "SELECT id, name, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold " +
                      "FROM stock WHERE quantity <= low_stock_threshold ORDER BY quantity ASC";
         List<StockItem> items = new ArrayList<>();
 
@@ -104,12 +96,10 @@ public class StockRepositoryImpl implements StockRepository {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                items.add(mapRow(rs));
-            }
+            while (rs.next()) items.add(mapRow(rs));
 
         } catch (SQLException e) {
-            System.err.println("Database error in findLowStock: " + e.getMessage());
+            System.err.println("db error in findLowStock: " + e.getMessage());
             return Collections.emptyList();
         }
 
@@ -120,14 +110,14 @@ public class StockRepositoryImpl implements StockRepository {
     public boolean save(StockItem item) {
         if (item == null) return false;
 
-        // insert or replace - works for both new items and updates
-        String sql = "INSERT OR REPLACE INTO stock (id, name, quantity, unit_price, vat_rate, low_stock_threshold) " +
-                     "VALUES (?, ?, ?, ?, ?, ?)";
+        // insert or replace — handles both new items and updates
+        String sql = "INSERT OR REPLACE INTO stock (id, name, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            // if id is 0, let sqlite auto-generate it for new items
+            // id 0 means new item — let sqlite auto-generate the id
             if (item.getItemId() == 0) {
                 stmt.setNull(1, java.sql.Types.INTEGER);
             } else {
@@ -135,21 +125,21 @@ public class StockRepositoryImpl implements StockRepository {
             }
             stmt.setString(2, item.getName());
             stmt.setInt(3, item.getQuantity());
-            stmt.setDouble(4, item.getUnitPrice());
-            stmt.setDouble(5, item.getVatRate());
-            stmt.setInt(6, item.getLowStockThreshold());
+            stmt.setDouble(4, item.getBulkCost());
+            stmt.setDouble(5, item.getMarkupRate());
+            stmt.setDouble(6, item.getVatRate());
+            stmt.setInt(7, item.getLowStockThreshold());
 
             return stmt.executeUpdate() > 0;
 
         } catch (SQLException e) {
-            System.err.println("Database error in save: " + e.getMessage());
+            System.err.println("db error in save: " + e.getMessage());
             return false;
         }
     }
 
     @Override
     public boolean delete(int itemId) {
-        // delete item by id
         String sql = "DELETE FROM stock WHERE id = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
@@ -159,7 +149,7 @@ public class StockRepositoryImpl implements StockRepository {
             return stmt.executeUpdate() > 0;
 
         } catch (SQLException e) {
-            System.err.println("Database error in delete: " + e.getMessage());
+            System.err.println("db error in delete: " + e.getMessage());
             return false;
         }
     }
