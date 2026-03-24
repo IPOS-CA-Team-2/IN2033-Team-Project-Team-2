@@ -20,13 +20,15 @@ public class StockManagementUI extends JFrame {
     private JTable stockTable;
 
     // column indices for the table
-    private static final int COL_ID = 0;
-    private static final int COL_NAME = 1;
-    private static final int COL_QTY = 2;
-    private static final int COL_PRICE = 3;
-    private static final int COL_VAT = 4;
-    private static final int COL_THRESHOLD = 5;
-    private static final int COL_STATUS = 6;
+    private static final int COL_ID        = 0;
+    private static final int COL_NAME      = 1;
+    private static final int COL_QTY       = 2;
+    private static final int COL_BULK_COST = 3;
+    private static final int COL_MARKUP    = 4;
+    private static final int COL_PRICE     = 5;
+    private static final int COL_VAT       = 6;
+    private static final int COL_THRESHOLD = 7;
+    private static final int COL_STATUS    = 8;
 
     public StockManagementUI() {
         this.stockService = new StockService(new StockRepositoryImpl());
@@ -61,7 +63,7 @@ public class StockManagementUI extends JFrame {
 
     // table showing all stock items
     private JPanel buildTablePanel() {
-        String[] columns = {"ID", "Name", "Quantity", "Unit Price (£)", "VAT Rate", "Low Stock Threshold", "Status"};
+        String[] columns = {"ID", "Name", "Quantity", "Bulk Cost (£)", "Markup", "Unit Price (£)", "VAT Rate", "Low Stock Threshold", "Status"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
@@ -131,6 +133,8 @@ public class StockManagementUI extends JFrame {
                 item.getItemId(),
                 item.getName(),
                 item.getQuantity(),
+                String.format("%.2f", item.getBulkCost()),
+                String.format("%.0f%%", item.getMarkupRate() * 100),
                 String.format("%.2f", item.getUnitPrice()),
                 String.format("%.0f%%", item.getVatRate() * 100),
                 item.getLowStockThreshold(),
@@ -186,16 +190,18 @@ public class StockManagementUI extends JFrame {
 
     // dialog to add a brand new stock item
     private void handleAddItem() {
-        JTextField nameField = new JTextField();
-        JTextField qtyField = new JTextField();
-        JTextField priceField = new JTextField();
-        JTextField vatField = new JTextField("0");
+        JTextField nameField      = new JTextField();
+        JTextField qtyField       = new JTextField();
+        JTextField bulkCostField  = new JTextField();
+        JTextField markupField    = new JTextField("30");
+        JTextField vatField       = new JTextField("0");
         JTextField thresholdField = new JTextField("10");
 
         Object[] fields = {
             "Item Name:", nameField,
             "Quantity:", qtyField,
-            "Unit Price (£):", priceField,
+            "Bulk Cost (£):", bulkCostField,
+            "Markup Rate (%):", markupField,
             "VAT Rate (%):", vatField,
             "Low Stock Threshold:", thresholdField
         };
@@ -204,13 +210,14 @@ public class StockManagementUI extends JFrame {
         if (result != JOptionPane.OK_OPTION) return;
 
         try {
-            String name = nameField.getText().trim();
-            int qty = Integer.parseInt(qtyField.getText().trim());
-            double price = Double.parseDouble(priceField.getText().trim());
-            double vat = Double.parseDouble(vatField.getText().trim()) / 100.0;
-            int threshold = Integer.parseInt(thresholdField.getText().trim());
+            String name     = nameField.getText().trim();
+            int qty         = Integer.parseInt(qtyField.getText().trim());
+            double bulkCost = Double.parseDouble(bulkCostField.getText().trim());
+            double markup   = Double.parseDouble(markupField.getText().trim()) / 100.0;
+            double vat      = Double.parseDouble(vatField.getText().trim()) / 100.0;
+            int threshold   = Integer.parseInt(thresholdField.getText().trim());
 
-            StockItem newItem = new StockItem(0, name, qty, price, vat, threshold);
+            StockItem newItem = new StockItem(0, name, qty, bulkCost, markup, vat, threshold);
             stockService.addStockItem(newItem);
             loadStockData();
             JOptionPane.showMessageDialog(this, name + " added successfully.", "Item Added", JOptionPane.INFORMATION_MESSAGE);
