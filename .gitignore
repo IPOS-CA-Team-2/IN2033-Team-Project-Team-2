@@ -1,0 +1,13 @@
+# Database
+*.db
+
+# IntelliJ
+.idea/
+*.iml
+out/
+
+# OS
+.DS_Store
+
+# Claude
+.claude/
