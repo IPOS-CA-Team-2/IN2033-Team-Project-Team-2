@@ -103,9 +103,9 @@ public class Dashboard extends JFrame {
         JButton customerAccounts = UITheme.primaryBtn("Customer Accounts");
         JButton placeOrder     = UITheme.primaryBtn("Place Wholesale Order");
 
-        salesReport.addActionListener(e -> JOptionPane.showMessageDialog(this, "Sales Report — coming soon"));
-        stockReport.addActionListener(e -> JOptionPane.showMessageDialog(this, "Stock Report — coming soon"));
-        debtReport.addActionListener(e -> JOptionPane.showMessageDialog(this, "Debt Report — coming soon"));
+        salesReport.addActionListener(e -> new ReportsUI(currentUser, 0));
+        stockReport.addActionListener(e -> new ReportsUI(currentUser, 1));
+        debtReport.addActionListener(e -> new ReportsUI(currentUser, 2));
         customerAccounts.addActionListener(e -> new CustomerAccountUI(currentUser));
         placeOrder.addActionListener(e -> new WholesaleOrderUI(currentUser));
 

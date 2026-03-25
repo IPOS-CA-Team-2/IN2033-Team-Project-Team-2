@@ -15,6 +15,7 @@ public class DatabaseManager {
         try {
             Class.forName("org.sqlite.JDBC");
             initialise();
+            System.out.println("db ready: " + DB_PATH);
         } catch (ClassNotFoundException e) {
             throw new RuntimeException("SQLite JDBC driver not found.", e);
         } catch (SQLException e) {
@@ -171,7 +172,7 @@ public class DatabaseManager {
                 )
             """);
 
-            // seed stock — bulk costs with 30% markup applied in the app to get retail price
+            // seed stock items — prices are bulk cost, markup handled in StockItem.getUnitPrice()
             stmt.execute("""
                 INSERT OR IGNORE INTO stock (id, name, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold) VALUES
                     (1, 'Paracetamol 500mg',  200, 1.92, 0.30, 0.00, 20),

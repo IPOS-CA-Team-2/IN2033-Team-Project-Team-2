@@ -83,10 +83,10 @@ public class StockService {
         stockRepository.save(item);
     }
 
-    // take an item out of the catalogue entirely
+    // removes item from catalogue — checks it exists first
+    // TODO: should probably warn if there are pending orders for this item
     public void removeStockItem(int itemId) throws StockException {
         validateItemId(itemId);
-        // make sure it actually exists first
         getStockItem(itemId);
         stockRepository.delete(itemId);
     }
