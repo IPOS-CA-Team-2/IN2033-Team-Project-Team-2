@@ -6,11 +6,8 @@ import model.User;
 import javax.swing.*;
 import java.awt.*;
 
-/**
- * Role-based dashboard shown after successful login.
- * Displays different menu options depending on whether the user is
- * an Admin, Pharmacist, or Manager.
- */
+// role-based dashboard shown after login
+// routes to different screens depending on Admin / Pharmacist / Manager
 public class Dashboard extends JFrame {
 
     private final User currentUser;
@@ -22,151 +19,111 @@ public class Dashboard extends JFrame {
         setSize(Main.SCREEN_WIDTH, Main.SCREEN_HEIGHT);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
+        UITheme.applyFrameBackground(this);
 
-        // Header
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
-        header.setBackground(new Color(44, 62, 80));
-
-        JLabel welcome = new JLabel("Welcome, " + user.getName());
-        welcome.setFont(new Font("Arial", Font.BOLD, 18));
-        welcome.setForeground(Color.WHITE);
-
-        JLabel roleLabel = new JLabel(user.getRole() + " Dashboard");
-        roleLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        roleLabel.setForeground(new Color(189, 195, 199));
-        roleLabel.setHorizontalAlignment(SwingConstants.RIGHT);
-
-        JButton logoutButton = new JButton("Logout");
-        logoutButton.addActionListener(e -> {
-            dispose();
-            Main.LoginScreen();
-        });
-
-        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        rightPanel.setOpaque(false);
-        rightPanel.add(roleLabel);
-        rightPanel.add(Box.createHorizontalStrut(15));
-        rightPanel.add(logoutButton);
-
-        header.add(welcome, BorderLayout.WEST);
-        header.add(rightPanel, BorderLayout.EAST);
-        add(header, BorderLayout.NORTH);
-
-        // Role-specific menu panel
-        JPanel menuPanel = buildMenuPanel();
-        add(menuPanel, BorderLayout.CENTER);
+        add(buildHeader(), BorderLayout.NORTH);
+        add(buildMenuPanel(), BorderLayout.CENTER);
 
         setLocationRelativeTo(null);
         setVisible(true);
     }
 
+    // dark header with welcome text left, role label + logout right
+    private JPanel buildHeader() {
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(UITheme.DARK_HEADER);
+        header.setBorder(BorderFactory.createEmptyBorder(14, 20, 14, 20));
+
+        JLabel welcome = new JLabel("Welcome, " + currentUser.getName());
+        welcome.setFont(new Font("Arial", Font.BOLD, 18));
+        welcome.setForeground(Color.WHITE);
+
+        JLabel roleLabel = new JLabel(currentUser.getRole() + " Dashboard");
+        roleLabel.setFont(new Font("Arial", Font.PLAIN, 13));
+        roleLabel.setForeground(UITheme.SUBTEXT);
+
+        JButton logoutButton = UITheme.secondaryBtn("Logout");
+        logoutButton.addActionListener(e -> { dispose(); Main.LoginScreen(); });
+
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightPanel.setOpaque(false);
+        rightPanel.add(roleLabel);
+        rightPanel.add(Box.createHorizontalStrut(8));
+        rightPanel.add(logoutButton);
+
+        header.add(welcome, BorderLayout.WEST);
+        header.add(rightPanel, BorderLayout.EAST);
+        return header;
+    }
+
     private JPanel buildMenuPanel() {
         switch (currentUser.getRole()) {
-            case "Admin":
-                return buildAdminMenu();
-            case "Pharmacist":
-                return buildPharmacistMenu();
-            case "Manager":
-                return buildManagerMenu();
+            case "Admin":      return buildAdminMenu();
+            case "Pharmacist": return buildPharmacistMenu();
+            case "Manager":    return buildManagerMenu();
             default:
                 JPanel fallback = new JPanel();
+                fallback.setOpaque(false);
                 fallback.add(new JLabel("Unknown role."));
                 return fallback;
         }
     }
 
+    // builds a centered column of menu buttons with consistent styling
     private JPanel buildAdminMenu() {
-        JPanel panel = new JPanel(new GridLayout(3, 1, 20, 20));
-        panel.setBorder(BorderFactory.createEmptyBorder(60, 200, 60, 200));
+        JButton manageUsers = UITheme.primaryBtn("Manage Staff Users");
+        JButton viewStock   = UITheme.primaryBtn("View Stock");
+        JButton viewReports = UITheme.primaryBtn("View Reports");
 
-        JButton manageUsers = new JButton("Manage Staff Users");
-        manageUsers.setFont(new Font("Arial", Font.PLAIN, 16));
-        manageUsers.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "User Management — coming soon");
-            // TODO: open UserManagementUI
-        });
-
-        JButton viewStock = new JButton("View Stock");
-        viewStock.setFont(new Font("Arial", Font.PLAIN, 16));
+        manageUsers.addActionListener(e -> JOptionPane.showMessageDialog(this, "User Management — coming soon"));
         viewStock.addActionListener(e -> new StockManagementUI());
+        viewReports.addActionListener(e -> JOptionPane.showMessageDialog(this, "Reports — coming soon"));
 
-        JButton viewReports = new JButton("View Reports");
-        viewReports.setFont(new Font("Arial", Font.PLAIN, 16));
-        viewReports.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Reports — coming soon");
-            // TODO: open ReportsUI
-        });
-
-        panel.add(manageUsers);
-        panel.add(viewStock);
-        panel.add(viewReports);
-        return panel;
+        return wrapMenuButtons(new JButton[]{manageUsers, viewStock, viewReports});
     }
 
     private JPanel buildPharmacistMenu() {
-        JPanel panel = new JPanel(new GridLayout(3, 1, 20, 20));
-        panel.setBorder(BorderFactory.createEmptyBorder(60, 200, 60, 200));
+        JButton processSale   = UITheme.primaryBtn("Process Sale");
+        JButton maintainStock = UITheme.primaryBtn("Maintain Local Stock");
+        JButton checkAccounts = UITheme.primaryBtn("Customer Accounts");
 
-        JButton processSale = new JButton("Process Sale");
-        processSale.setFont(new Font("Arial", Font.PLAIN, 16));
         processSale.addActionListener(e -> new ProcessSaleUI(currentUser));
-
-        JButton maintainStock = new JButton("Maintain Local Stock");
-        maintainStock.setFont(new Font("Arial", Font.PLAIN, 16));
         maintainStock.addActionListener(e -> new StockManagementUI());
-
-        JButton checkAccounts = new JButton("Customer Accounts");
-        checkAccounts.setFont(new Font("Arial", Font.PLAIN, 16));
         checkAccounts.addActionListener(e -> new CustomerAccountUI(currentUser));
 
-        panel.add(processSale);
-        panel.add(maintainStock);
-        panel.add(checkAccounts);
-        return panel;
+        return wrapMenuButtons(new JButton[]{processSale, maintainStock, checkAccounts});
     }
 
     private JPanel buildManagerMenu() {
-        JPanel panel = new JPanel(new GridLayout(5, 1, 20, 20));
-        panel.setBorder(BorderFactory.createEmptyBorder(40, 200, 40, 200));
+        JButton salesReport    = UITheme.primaryBtn("Sales / Turnover Report");
+        JButton stockReport    = UITheme.primaryBtn("Stock Availability Report");
+        JButton debtReport     = UITheme.primaryBtn("Aggregated Debt Report");
+        JButton customerAccounts = UITheme.primaryBtn("Customer Accounts");
+        JButton placeOrder     = UITheme.primaryBtn("Place Wholesale Order");
 
-        JButton salesReport = new JButton("Sales / Turnover Report");
-        salesReport.setFont(new Font("Arial", Font.PLAIN, 16));
-        salesReport.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Sales Report — coming soon");
-            // TODO: open ReportsUI
-        });
-
-        JButton stockReport = new JButton("Stock Availability Report");
-        stockReport.setFont(new Font("Arial", Font.PLAIN, 16));
-        stockReport.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Stock Report — coming soon");
-            // TODO: open ReportsUI
-        });
-
-        JButton debtReport = new JButton("Aggregated Debt Report");
-        debtReport.setFont(new Font("Arial", Font.PLAIN, 16));
-        debtReport.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Debt Report — coming soon");
-            // TODO: open ReportsUI
-        });
-
-        JButton customerAccounts = new JButton("Customer Accounts");
-        customerAccounts.setFont(new Font("Arial", Font.PLAIN, 16));
+        salesReport.addActionListener(e -> JOptionPane.showMessageDialog(this, "Sales Report — coming soon"));
+        stockReport.addActionListener(e -> JOptionPane.showMessageDialog(this, "Stock Report — coming soon"));
+        debtReport.addActionListener(e -> JOptionPane.showMessageDialog(this, "Debt Report — coming soon"));
         customerAccounts.addActionListener(e -> new CustomerAccountUI(currentUser));
+        placeOrder.addActionListener(e -> JOptionPane.showMessageDialog(this, "Wholesale Order — coming soon"));
 
-        JButton placeOrder = new JButton("Place Wholesale Order");
-        placeOrder.setFont(new Font("Arial", Font.PLAIN, 16));
-        placeOrder.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Wholesale Order — coming soon");
-            // TODO: open WholesaleOrderUI
-        });
+        return wrapMenuButtons(new JButton[]{salesReport, stockReport, debtReport, customerAccounts, placeOrder});
+    }
 
-        panel.add(salesReport);
-        panel.add(stockReport);
-        panel.add(debtReport);
-        panel.add(customerAccounts);
-        panel.add(placeOrder);
-        return panel;
+    // wraps an array of buttons in a centered vertical panel with consistent sizing
+    private JPanel wrapMenuButtons(JButton[] buttons) {
+        JPanel inner = new JPanel(new GridLayout(buttons.length, 1, 0, 14));
+        inner.setOpaque(false);
+
+        for (JButton btn : buttons) {
+            btn.setFont(new Font("Arial", Font.BOLD, 14));
+            btn.setPreferredSize(new Dimension(260, 50));
+            inner.add(btn);
+        }
+
+        JPanel centered = new JPanel(new GridBagLayout());
+        centered.setOpaque(false);
+        centered.add(inner, new GridBagConstraints());
+        return centered;
     }
 }

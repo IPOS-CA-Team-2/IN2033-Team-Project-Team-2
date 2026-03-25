@@ -44,6 +44,7 @@ public class CustomerAccountUI extends JFrame {
         setSize(980, 580);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout());
+        UITheme.applyFrameBackground(this);
 
         add(buildHeader(), BorderLayout.NORTH);
         add(buildTablePanel(), BorderLayout.CENTER);
@@ -56,34 +57,25 @@ public class CustomerAccountUI extends JFrame {
 
     // header with title left, search controls right
     private JPanel buildHeader() {
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        header.setBackground(new Color(44, 62, 80));
-
-        JLabel title = new JLabel("Customer Accounts");
-        title.setFont(new Font("Arial", Font.BOLD, 16));
-        title.setForeground(Color.WHITE);
-
-        JTextField searchField = new JTextField(15);
-        JButton searchBtn = new JButton("Search");
-        JButton clearBtn  = new JButton("Clear");
+        JTextField searchField = new JTextField(14);
+        JButton searchBtn = UITheme.secondaryBtn("Search");
+        JButton clearBtn  = UITheme.secondaryBtn("Clear");
 
         searchBtn.addActionListener(e -> loadCustomerData(searchField.getText().trim()));
         clearBtn.addActionListener(e -> { searchField.setText(""); loadCustomerData(null); });
         searchField.addActionListener(e -> loadCustomerData(searchField.getText().trim()));
 
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         searchPanel.setOpaque(false);
         JLabel searchLabel = new JLabel("Search:");
         searchLabel.setForeground(Color.WHITE);
+        searchLabel.setFont(UITheme.FONT_BODY);
         searchPanel.add(searchLabel);
         searchPanel.add(searchField);
         searchPanel.add(searchBtn);
         searchPanel.add(clearBtn);
 
-        header.add(title, BorderLayout.WEST);
-        header.add(searchPanel, BorderLayout.EAST);
-        return header;
+        return UITheme.createHeaderPanel("Customer Accounts", searchPanel);
     }
 
     // table of all account holders with status colour coding
@@ -94,12 +86,11 @@ public class CustomerAccountUI extends JFrame {
         };
 
         customerTable = new JTable(tableModel);
-        customerTable.setRowHeight(25);
         customerTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        customerTable.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
         customerTable.getColumnModel().getColumn(COL_ID).setMaxWidth(40);
+        UITheme.styleTable(customerTable);
 
-        // colour rows by account status
+        // colour rows by account status — alternating rows as base for normal accounts
         customerTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value,
@@ -112,7 +103,7 @@ public class CustomerAccountUI extends JFrame {
                     } else if ("SUSPENDED".equals(status)) {
                         c.setBackground(new Color(255, 243, 205));
                     } else {
-                        c.setBackground(Color.WHITE);
+                        c.setBackground(row % 2 == 0 ? Color.WHITE : UITheme.ROW_ALT);
                     }
                     c.setForeground(Color.BLACK);
                 }
@@ -130,6 +121,7 @@ public class CustomerAccountUI extends JFrame {
 
         JScrollPane scrollPane = new JScrollPane(customerTable);
         JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(UITheme.LIGHT_BG);
         panel.setBorder(BorderFactory.createEmptyBorder(10, 15, 5, 15));
         panel.add(scrollPane, BorderLayout.CENTER);
         return panel;
@@ -137,13 +129,14 @@ public class CustomerAccountUI extends JFrame {
 
     // action buttons — manager gets extra restore and generate reminders
     private JPanel buildButtonPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 10));
+        panel.setBackground(UITheme.LIGHT_BG);
         panel.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
 
-        JButton addBtn     = new JButton("Add Account Holder");
-        JButton editBtn    = new JButton("Edit Details");
-        JButton paymentBtn = new JButton("Record Payment");
-        JButton refreshBtn = new JButton("Refresh");
+        JButton addBtn     = UITheme.successBtn("Add Account Holder");
+        JButton editBtn    = UITheme.primaryBtn("Edit Details");
+        JButton paymentBtn = UITheme.primaryBtn("Record Payment");
+        JButton refreshBtn = UITheme.secondaryBtn("Refresh");
 
         addBtn.addActionListener(e -> handleAddCustomer());
         editBtn.addActionListener(e -> handleEditCustomer());
@@ -156,8 +149,8 @@ public class CustomerAccountUI extends JFrame {
         panel.add(refreshBtn);
 
         if ("Manager".equals(currentUser.getRole())) {
-            JButton generateBtn = new JButton("Generate Reminders");
-            restoreBtn = new JButton("Restore Account");
+            JButton generateBtn = UITheme.primaryBtn("Generate Reminders");
+            restoreBtn = UITheme.dangerBtn("Restore Account");
             restoreBtn.setEnabled(false);
 
             generateBtn.addActionListener(e -> handleGenerateReminders());
