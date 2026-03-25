@@ -37,28 +37,15 @@ public class StockManagementUI extends JFrame {
         setSize(900, 600);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout());
+        UITheme.applyFrameBackground(this);
 
-        add(buildHeader(), BorderLayout.NORTH);
+        add(UITheme.createHeaderPanel("Stock Management"), BorderLayout.NORTH);
         add(buildTablePanel(), BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
 
         loadStockData();
         setLocationRelativeTo(null);
         setVisible(true);
-    }
-
-    // top bar with title and low stock warning count
-    private JPanel buildHeader() {
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        header.setBackground(new Color(44, 62, 80));
-
-        JLabel title = new JLabel("Stock Management");
-        title.setFont(new Font("Arial", Font.BOLD, 16));
-        title.setForeground(Color.WHITE);
-
-        header.add(title, BorderLayout.WEST);
-        return header;
     }
 
     // table showing all stock items
@@ -72,11 +59,10 @@ public class StockManagementUI extends JFrame {
         };
 
         stockTable = new JTable(tableModel);
-        stockTable.setRowHeight(25);
         stockTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        stockTable.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
+        UITheme.styleTable(stockTable);
 
-        // highlight low stock rows in red
+        // highlight low stock rows in red — alternating rows as base for normal items
         stockTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value,
@@ -84,8 +70,13 @@ public class StockManagementUI extends JFrame {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
                 String status = (String) table.getValueAt(row, COL_STATUS);
                 if (!isSelected) {
-                    c.setBackground("LOW STOCK".equals(status) ? new Color(255, 220, 220) : Color.WHITE);
-                    c.setForeground("LOW STOCK".equals(status) ? new Color(180, 0, 0) : Color.BLACK);
+                    if ("LOW STOCK".equals(status)) {
+                        c.setBackground(new Color(255, 220, 220));
+                        c.setForeground(new Color(180, 0, 0));
+                    } else {
+                        c.setBackground(row % 2 == 0 ? Color.WHITE : UITheme.ROW_ALT);
+                        c.setForeground(Color.BLACK);
+                    }
                 }
                 return c;
             }
@@ -93,6 +84,7 @@ public class StockManagementUI extends JFrame {
 
         JScrollPane scrollPane = new JScrollPane(stockTable);
         JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(UITheme.LIGHT_BG);
         panel.setBorder(BorderFactory.createEmptyBorder(10, 15, 5, 15));
         panel.add(scrollPane, BorderLayout.CENTER);
         return panel;
@@ -100,14 +92,15 @@ public class StockManagementUI extends JFrame {
 
     // action buttons at the bottom
     private JPanel buildButtonPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 10));
+        panel.setBackground(UITheme.LIGHT_BG);
         panel.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
 
-        JButton increaseBtn = new JButton("Increase Stock");
-        JButton decreaseBtn = new JButton("Decrease Stock");
-        JButton addItemBtn = new JButton("Add New Item");
-        JButton removeItemBtn = new JButton("Remove Item");
-        JButton refreshBtn = new JButton("Refresh");
+        JButton increaseBtn  = UITheme.primaryBtn("Increase Stock");
+        JButton decreaseBtn  = UITheme.primaryBtn("Decrease Stock");
+        JButton addItemBtn   = UITheme.successBtn("Add New Item");
+        JButton removeItemBtn = UITheme.dangerBtn("Remove Item");
+        JButton refreshBtn   = UITheme.secondaryBtn("Refresh");
 
         increaseBtn.addActionListener(e -> handleAdjustStock(true));
         decreaseBtn.addActionListener(e -> handleAdjustStock(false));

@@ -8,7 +8,10 @@ import repository.*;
 import service.*;
 import ui.Dashboard;
 
+import ui.UITheme;
+
 import javax.swing.*;
+import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.time.LocalDate;
@@ -24,6 +27,10 @@ public class Main extends JFrame {
     }
 
     public static void main(String[] args) {
+        // use cross-platform L&F so flat colored buttons render correctly on all OS
+        try { UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName()); }
+        catch (Exception ignored) {}
+
         // run account status engine on startup
         new AccountService(new CustomerRepositoryImpl()).updateAccountStatuses();
         new Main();
@@ -264,58 +271,141 @@ public class Main extends JFrame {
         frame.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new GridBagLayout());
+        frame.getContentPane().setBackground(UITheme.LOGIN_BG);
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        // --- card: white panel sitting on the dark background ---
+        JPanel card = new JPanel(new BorderLayout());
+        card.setBackground(Color.WHITE);
+        card.setPreferredSize(new Dimension(400, 430));
+        card.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 205)));
 
-        JLabel companyName = new JLabel("IPOS-CA name i which forgot", SwingConstants.CENTER);
-        companyName.setFont(new Font("Arial", Font.BOLD, 20));
+        // accent strip — 4px primary blue bar at the very top
+        JPanel accentStrip = new JPanel();
+        accentStrip.setBackground(UITheme.PRIMARY);
+        accentStrip.setPreferredSize(new Dimension(400, 4));
 
-        gbc.gridy = 0;
-        gbc.insets = new Insets(50, 10, 50, 10);
-        frame.add(companyName, gbc);
+        // card top section = accent strip (NORTH) + dark header (CENTER)
+        JPanel cardTop = new JPanel(new BorderLayout());
+        cardTop.setOpaque(false);
+        cardTop.add(accentStrip, BorderLayout.NORTH);
+        cardTop.add(buildLoginHeader(), BorderLayout.CENTER);
 
-        JPanel panel = new JPanel(new GridLayout(3, 2, 15, 15));
-        panel.setPreferredSize(new Dimension(350, 120));
+        card.add(cardTop, BorderLayout.NORTH);
 
-        JLabel usernameLabel = new JLabel("Username:");
-        JTextField usernameField = new JTextField();
-        JLabel passwordLabel = new JLabel("Password:");
-        JPasswordField passwordField = new JPasswordField();
-        JButton loginButton = new JButton("Login");
+        // --- form body ---
+        JTextField usernameField   = new JTextField(20);
+        JPasswordField passwordField = new JPasswordField(20);
+        UITheme.styleTextField(usernameField);
+        UITheme.styleTextField(passwordField);
 
-        panel.add(usernameLabel);
-        panel.add(usernameField);
-        panel.add(passwordLabel);
-        panel.add(passwordField);
-        panel.add(new JLabel());
-        panel.add(loginButton);
+        JLabel errorLabel = new JLabel(" ");
+        errorLabel.setFont(UITheme.FONT_SMALL);
+        errorLabel.setForeground(UITheme.DANGER);
+        errorLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
+        JButton loginButton = UITheme.primaryBtn("Sign In");
+        loginButton.setFont(new Font("Arial", Font.BOLD, 13));
+        loginButton.setPreferredSize(new Dimension(340, 42));
+        loginButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+
+        // action shared by button click and enter key
+        ActionListener doLogin = e -> {
+            String username = usernameField.getText();
+            String password = new String(passwordField.getPassword());
+            try {
+                User user = loginService.login(username, password);
+                frame.dispose();
+                new Dashboard(user);
+            } catch (AuthException ex) {
+                errorLabel.setText(ex.getMessage());
+            }
+        };
+
+        loginButton.addActionListener(doLogin);
+        usernameField.addActionListener(doLogin);
+        passwordField.addActionListener(doLogin);
         frame.getRootPane().setDefaultButton(loginButton);
 
-        loginButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String username = usernameField.getText();
-                String password = new String(passwordField.getPassword());
+        // form panel — BoxLayout stacks everything vertically
+        JPanel form = new JPanel();
+        form.setBackground(Color.WHITE);
+        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
+        form.setBorder(BorderFactory.createEmptyBorder(26, 30, 24, 30));
 
-                try {
-                    User user = loginService.login(username, password);
-                    frame.dispose();
-                    new Dashboard(user);
-                } catch (AuthException ex) {
-                    JOptionPane.showMessageDialog(frame,
-                        ex.getMessage(),
-                        "Login Failed",
-                        JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
+        JLabel userLabel = makeFormLabel("USERNAME");
+        JLabel passLabel = makeFormLabel("PASSWORD");
 
-        gbc.gridy = 1;
-        frame.add(panel, gbc);
+        usernameField.setAlignmentX(Component.LEFT_ALIGNMENT);
+        passwordField.setAlignmentX(Component.LEFT_ALIGNMENT);
+        loginButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+        errorLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        form.add(userLabel);
+        form.add(Box.createVerticalStrut(5));
+        form.add(usernameField);
+        form.add(Box.createVerticalStrut(14));
+        form.add(passLabel);
+        form.add(Box.createVerticalStrut(5));
+        form.add(passwordField);
+        form.add(Box.createVerticalStrut(22));
+        form.add(loginButton);
+        form.add(Box.createVerticalStrut(8));
+        form.add(errorLabel);
+
+        card.add(form, BorderLayout.CENTER);
+
+        // add card to center of dark frame
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0; gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.fill = GridBagConstraints.NONE;
+        frame.add(card, gbc);
+
+        frame.setLocationRelativeTo(null);
         frame.setVisible(true);
+    }
+
+    // dark header section inside the login card
+    private static JPanel buildLoginHeader() {
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(UITheme.DARK_HEADER);
+        header.setBorder(BorderFactory.createEmptyBorder(22, 28, 22, 28));
+
+        // left: system name + subtitle stacked vertically
+        JPanel textStack = new JPanel();
+        textStack.setOpaque(false);
+        textStack.setLayout(new BoxLayout(textStack, BoxLayout.Y_AXIS));
+
+        JLabel title = new JLabel("IPOS-CA");
+        title.setFont(new Font("Arial", Font.BOLD, 24));
+        title.setForeground(Color.WHITE);
+
+        JLabel subtitle = new JLabel("Pharmacy Management System");
+        subtitle.setFont(new Font("Arial", Font.PLAIN, 11));
+        subtitle.setForeground(UITheme.SUBTEXT);
+
+        textStack.add(title);
+        textStack.add(Box.createVerticalStrut(4));
+        textStack.add(subtitle);
+
+        // right: Rx symbol as a decorative element
+        JLabel rx = new JLabel("Rx");
+        rx.setFont(new Font("Arial", Font.BOLD, 38));
+        rx.setForeground(new Color(255, 255, 255, 45));
+        rx.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 0));
+
+        header.add(textStack, BorderLayout.WEST);
+        header.add(rx, BorderLayout.EAST);
+        return header;
+    }
+
+    // small uppercase label used above form fields in the login card
+    private static JLabel makeFormLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(UITheme.FONT_LABEL);
+        label.setForeground(UITheme.SECONDARY);
+        label.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return label;
     }
 }
 // chang qi is cool

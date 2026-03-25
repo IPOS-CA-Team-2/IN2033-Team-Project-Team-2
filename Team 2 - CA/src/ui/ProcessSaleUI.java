@@ -59,6 +59,7 @@ public class ProcessSaleUI extends JFrame {
         setSize(1150, 730);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
+        UITheme.applyFrameBackground(this);
 
         add(buildHeader(), BorderLayout.NORTH);
         add(buildMainPanel(), BorderLayout.CENTER);
@@ -70,14 +71,7 @@ public class ProcessSaleUI extends JFrame {
     }
 
     private JPanel buildHeader() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(44, 62, 80));
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        JLabel title = new JLabel("Process Sale — " + currentUser.getName());
-        title.setFont(new Font("Arial", Font.BOLD, 16));
-        title.setForeground(Color.WHITE);
-        panel.add(title, BorderLayout.WEST);
-        return panel;
+        return UITheme.createHeaderPanel("Process Sale — " + currentUser.getName());
     }
 
     private JPanel buildMainPanel() {
@@ -98,14 +92,14 @@ public class ProcessSaleUI extends JFrame {
         panel.setBorder(BorderFactory.createTitledBorder("Account Holder (leave blank for walk-in customer)"));
 
         accountNumberField = new JTextField(12);
-        JButton lookupBtn = new JButton("Lookup");
+        JButton lookupBtn = UITheme.primaryBtn("Lookup");
         customerInfoLabel = new JLabel("No account selected — walk-in sale");
         customerInfoLabel.setFont(new Font("Arial", Font.ITALIC, 12));
 
         lookupBtn.addActionListener(e -> handleAccountLookup());
         accountNumberField.addActionListener(e -> handleAccountLookup()); // enter key
 
-        JButton clearBtn = new JButton("Clear");
+        JButton clearBtn = UITheme.secondaryBtn("Clear");
         clearBtn.addActionListener(e -> {
             selectedCustomer = null;
             accountNumberField.setText("");
@@ -143,15 +137,15 @@ public class ProcessSaleUI extends JFrame {
             public boolean isCellEditable(int r, int c) { return false; }
         };
         catalogueTable = new JTable(catalogueModel);
-        catalogueTable.setRowHeight(24);
         catalogueTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        UITheme.styleTable(catalogueTable);
         catalogueTable.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent e) {
                 if (e.getClickCount() == 2) handleAddToBasket();
             }
         });
 
-        JButton addBtn = new JButton("Add to Sale →");
+        JButton addBtn = UITheme.primaryBtn("Add to Sale →");
         addBtn.addActionListener(e -> handleAddToBasket());
 
         panel.add(searchPanel, BorderLayout.NORTH);
@@ -169,9 +163,9 @@ public class ProcessSaleUI extends JFrame {
             public boolean isCellEditable(int r, int c) { return false; }
         };
         basketTable = new JTable(basketModel);
-        basketTable.setRowHeight(24);
+        UITheme.styleTable(basketTable);
 
-        JButton removeBtn = new JButton("← Remove Item");
+        JButton removeBtn = UITheme.dangerBtn("← Remove Item");
         removeBtn.addActionListener(e -> handleRemoveFromBasket());
 
         totalLabel = new JLabel("Total: £0.00");
@@ -223,10 +217,9 @@ public class ProcessSaleUI extends JFrame {
         cardPanel.add(new JLabel("Expiry:"));   cardPanel.add(expiryField);
         cardPanel.setVisible(false);
 
-        JButton processBtn = new JButton("Process Sale");
+        JButton processBtn = UITheme.successBtn("Process Sale");
         processBtn.setFont(new Font("Arial", Font.BOLD, 14));
-        processBtn.setBackground(new Color(39, 174, 96));
-        processBtn.setForeground(Color.WHITE);
+        processBtn.setPreferredSize(new Dimension(160, 50));
         processBtn.addActionListener(e -> handleProcessSale());
 
         JPanel leftPanel = new JPanel(new BorderLayout());
