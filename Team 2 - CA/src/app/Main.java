@@ -337,6 +337,56 @@ public class Main extends JFrame {
             puSvc.increaseStock(4, 2);
         } catch (StockException e) { fail(s, "adapter simulate threw: " + e.getMessage()); }
 
+        // --- 8. ReportService ---
+        System.out.println("\n--- 8. ReportService ---");
+        ReportService reportSvc = new ReportService(
+            new SaleRepositoryImpl(),
+            new CustomerRepositoryImpl(),
+            new StockService(new StockRepositoryImpl()),
+            new WholesaleOrderRepositoryImpl()
+        );
+
+        // stock report — always current snapshot
+        ReportService.StockReport stockRpt = reportSvc.generateStockReport();
+        check(s, stockRpt != null && stockRpt.rows.size() == 5,
+            "stock report contains 5 items (got " + (stockRpt != null ? stockRpt.rows.size() : "null") + ")");
+        check(s, stockRpt != null && stockRpt.totalStockValue > 0,
+            "stock report total value > 0 (got £" + (stockRpt != null ? String.format("%.2f", stockRpt.totalStockValue) : "?") + ")");
+        check(s, stockRpt != null && stockRpt.rows.stream().anyMatch(r -> r.lowStock),
+            "stock report flags at least one low-stock item");
+        check(s, stockRpt != null && stockRpt.rows.stream().anyMatch(r -> "Amoxicillin 250mg".equals(r.name) && r.lowStock),
+            "amoxicillin correctly flagged as low stock in report");
+
+        // turnover report — broad range captures the test sale placed in section 3
+        LocalDate rptFrom = LocalDate.now().minusDays(1);
+        LocalDate rptTo   = LocalDate.now().plusDays(1);
+        ReportService.TurnoverReport turnRpt = reportSvc.generateTurnoverReport(rptFrom, rptTo);
+        check(s, turnRpt != null && turnRpt.saleCount >= 1,
+            "turnover report finds at least 1 sale today (got " + (turnRpt != null ? turnRpt.saleCount : "null") + ")");
+        check(s, turnRpt != null && turnRpt.totalRevenue > 0,
+            "turnover report revenue > 0 (got £" + (turnRpt != null ? String.format("%.2f", turnRpt.totalRevenue) : "?") + ")");
+        check(s, turnRpt != null && turnRpt.cashCount >= 1,
+            "turnover report counts cash sale from section 3");
+        check(s, turnRpt != null && turnRpt.from.equals(rptFrom) && turnRpt.to.equals(rptTo),
+            "turnover report period dates correct");
+
+        // wholesale orders in range — section 6 placed one today
+        check(s, turnRpt != null && turnRpt.orderCount >= 1,
+            "turnover report finds wholesale order placed today (got " + (turnRpt != null ? turnRpt.orderCount : "null") + ")");
+        check(s, turnRpt != null && turnRpt.orderTotal > 0,
+            "turnover report wholesale total > 0 (got £" + (turnRpt != null ? String.format("%.2f", turnRpt.orderTotal) : "?") + ")");
+
+        // debt report — 3 seeded customers
+        ReportService.DebtReport debtRpt = reportSvc.generateDebtReport();
+        check(s, debtRpt != null && debtRpt.rows.size() == 3,
+            "debt report contains 3 account holders (got " + (debtRpt != null ? debtRpt.rows.size() : "null") + ")");
+        check(s, debtRpt != null && debtRpt.totalDebt >= 0,
+            "debt report total debt is non-negative (got £" + (debtRpt != null ? String.format("%.2f", debtRpt.totalDebt) : "?") + ")");
+        check(s, debtRpt != null && debtRpt.rows.stream().allMatch(r -> r.accountNumber != null && !r.accountNumber.isBlank()),
+            "all debt rows have valid account numbers");
+        check(s, debtRpt != null && debtRpt.rows.stream().allMatch(r -> r.utilisationPct >= 0),
+            "all debt rows have non-negative utilisation %");
+
         // --- Summary ---
         System.out.println("\n========== RESULTS: " + s[0] + " passed, " + s[1] + " failed ==========\n");
     }

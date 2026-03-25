@@ -6,8 +6,7 @@ import repository.CustomerRepository;
 import java.time.LocalDate;
 import java.util.List;
 
-// business logic for account holder management
-// handles credit checks, discount calculation, status state machine, and payments
+// handles account holder logic — credit checks, discounts, status changes etc
 public class AccountService {
 
     private final CustomerRepository customerRepository;
@@ -17,20 +16,13 @@ public class AccountService {
         this.customerRepository = customerRepository;
     }
 
-    // --- credit limit check (step 19) ---
-
-    // returns true if the account holder is allowed to make a purchase of this amount
-    // only normal accounts can purchase — suspended and in default are both blocked
+    // only NORMAL accounts can buy — suspended and in default are blocked
     public boolean canMakePurchase(Customer customer, double purchaseAmount) {
         if (customer.getStatus() != AccountStatus.NORMAL) return false;
         return (customer.getCurrentBalance() + purchaseAmount) <= customer.getCreditLimit();
     }
 
-    // --- discount calculation (step 20) ---
-
-    // returns the discount amount to deduct from the sale subtotal
-    // fixed: applied immediately at point of sale
-    // flexible: not applied at point of sale — calculated at month end, so returns 0 here
+    // discount at point of sale — fixed applies now, flexible is 0 (calculated at month end)
     public double calculatePointOfSaleDiscount(Customer customer, double subtotal) {
         if (customer.getDiscountType() == DiscountType.FIXED) {
             return subtotal * customer.getFixedDiscountRate();
@@ -39,8 +31,8 @@ public class AccountService {
         return 0.0;
     }
 
-    // calculates the flexible discount earned across a full calendar month
-    // retail tiers: under £50 = 1%, £50-£100 = 3%, over £100 = 5%
+    // month end flexible discount — tiers based on total spend that month
+    // TODO: confirm these thresholds with the brief again before demo
     public double calculateFlexibleMonthEndDiscount(Customer customer) {
         if (customer.getDiscountType() != DiscountType.FLEXIBLE) return 0.0;
 
@@ -66,8 +58,6 @@ public class AccountService {
         // reset monthly spend to 0 for the new month
         return customerRepository.updateBalance(customer.getCustomerId(), newBalance, 0.0);
     }
-
-    // --- sale with account holder (step 21) ---
 
     // called after a successful account sale — adds to balance and monthly spend
     public boolean recordAccountSale(Customer customer, double saleTotal) {
@@ -97,15 +87,12 @@ public class AccountService {
         return true;
     }
 
-    // --- account status update logic (step 22) ---
-
-    // runs the fig. 1 state machine for all accounts — should be called on app startup
-    // and can be triggered manually
-    // normal → suspended at 15th of month following statement date if balance unpaid
-    // suspended → in default at end of that month if still unpaid
+    // runs the status state machine on startup — normal > suspended > in default
+    // based on fig 1 in the brief
     public void updateAccountStatuses() {
         LocalDate today = LocalDate.now();
         List<Customer> customers = customerRepository.findAll();
+        //System.out.println("checking statuses for " + customers.size() + " customers");
 
         for (Customer customer : customers) {
             // no debt = nothing to change

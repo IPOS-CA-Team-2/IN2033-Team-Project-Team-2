@@ -54,7 +54,7 @@ public class SaleService {
         double discountPercent = subtotal > 0 ? discountAmount / subtotal : 0;
         double chargeAmount = subtotal - discountAmount;
 
-        // credit limit check — per brief: suspended can still buy if limit not exceeded
+        // credit check — canMakePurchase also handles status (suspended/default cant buy)
         if (!accountService.canMakePurchase(customer, chargeAmount)) {
             throw new SaleException(SaleException.Reason.CREDIT_LIMIT_EXCEEDED,
                 customer.getStatus() == AccountStatus.IN_DEFAULT
@@ -101,6 +101,7 @@ public class SaleService {
         // 3. build and persist the sale
         Sale sale = new Sale(0, customerId, lines, LocalDateTime.now(),
                              discountPercent, paymentMethod, cardDetails);
+        //System.out.println("saving sale for customer " + customerId + " total=" + sale.getTotal());
         int generatedId = saleRepository.save(sale);
         if (generatedId < 0)
             throw new SaleException(SaleException.Reason.SAVE_FAILED, "failed to save the sale to the database");
