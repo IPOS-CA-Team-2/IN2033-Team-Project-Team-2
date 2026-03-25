@@ -83,15 +83,17 @@ public class Dashboard extends JFrame {
     }
 
     private JPanel buildPharmacistMenu() {
-        JButton processSale   = UITheme.primaryBtn("Process Sale");
-        JButton maintainStock = UITheme.primaryBtn("Maintain Local Stock");
-        JButton checkAccounts = UITheme.primaryBtn("Customer Accounts");
+        JButton processSale    = UITheme.primaryBtn("Process Sale");
+        JButton maintainStock  = UITheme.primaryBtn("Maintain Local Stock");
+        JButton checkAccounts  = UITheme.primaryBtn("Customer Accounts");
+        JButton wholesaleOrder = UITheme.primaryBtn("Wholesale Orders");
 
         processSale.addActionListener(e -> new ProcessSaleUI(currentUser));
         maintainStock.addActionListener(e -> new StockManagementUI());
         checkAccounts.addActionListener(e -> new CustomerAccountUI(currentUser));
+        wholesaleOrder.addActionListener(e -> new WholesaleOrderUI(currentUser));
 
-        return wrapMenuButtons(new JButton[]{processSale, maintainStock, checkAccounts});
+        return wrapMenuButtons(new JButton[]{processSale, maintainStock, checkAccounts, wholesaleOrder});
     }
 
     private JPanel buildManagerMenu() {
@@ -105,7 +107,7 @@ public class Dashboard extends JFrame {
         stockReport.addActionListener(e -> JOptionPane.showMessageDialog(this, "Stock Report — coming soon"));
         debtReport.addActionListener(e -> JOptionPane.showMessageDialog(this, "Debt Report — coming soon"));
         customerAccounts.addActionListener(e -> new CustomerAccountUI(currentUser));
-        placeOrder.addActionListener(e -> JOptionPane.showMessageDialog(this, "Wholesale Order — coming soon"));
+        placeOrder.addActionListener(e -> new WholesaleOrderUI(currentUser));
 
         return wrapMenuButtons(new JButton[]{salesReport, stockReport, debtReport, customerAccounts, placeOrder});
     }

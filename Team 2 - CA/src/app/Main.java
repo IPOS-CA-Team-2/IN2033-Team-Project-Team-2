@@ -3,11 +3,12 @@ package app;
 import exception.AuthException;
 import exception.SaleException;
 import exception.StockException;
+import integration.MockPuAdapter;
+import integration.MockSaGateway;
 import model.*;
 import repository.*;
 import service.*;
 import ui.Dashboard;
-
 import ui.UITheme;
 
 import javax.swing.*;
@@ -17,6 +18,7 @@ import java.awt.event.*;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.ArrayList;
 
 public class Main extends JFrame {
     public static final int SCREEN_WIDTH = 1280;
@@ -247,6 +249,93 @@ public class Main extends JFrame {
         } else {
             fail(s, "could not insert temp customer for reminder tests");
         }
+
+        // --- 6. WholesaleOrderService (SA integration) ---
+        System.out.println("\n--- 6. WholesaleOrderService ---");
+        StockService wsSvc = new StockService(new StockRepositoryImpl());
+        WholesaleOrderService orderSvc = new WholesaleOrderService(new MockSaGateway(), wsSvc);
+
+        List<OrderLine> lines = Arrays.asList(
+            new OrderLine(1, "Paracetamol 500mg", 50, 1.92),
+            new OrderLine(2, "Ibuprofen 200mg",   30, 3.07)
+        );
+        WholesaleOrder placed = orderSvc.placeOrder(lines);
+        check(s, placed != null && placed.getOrderId() > 0,
+            "placeOrder returns saved order with id=" + (placed != null ? placed.getOrderId() : "null"));
+        check(s, placed != null && placed.getStatus() == OrderStatus.PENDING,
+            "new order starts as PENDING");
+        check(s, placed != null && Math.abs(placed.getTotalValue() - (50*1.92 + 30*3.07)) < 0.001,
+            "order total value correct: £" + (placed != null ? String.format("%.2f", placed.getTotalValue()) : "?"));
+
+        if (placed != null) {
+            int oid = placed.getOrderId();
+
+            orderSvc.simulateStatusUpdate(oid, OrderStatus.ACCEPTED, null, null, null, null);
+            check(s, orderSvc.getOrder(oid).getStatus() == OrderStatus.ACCEPTED,
+                "order status updated to ACCEPTED");
+
+            LocalDate dispDate = LocalDate.now();
+            orderSvc.simulateStatusUpdate(oid, OrderStatus.DISPATCHED, "DHL", "DHL123", dispDate, dispDate.plusDays(3));
+            WholesaleOrder dispatched = orderSvc.getOrder(oid);
+            check(s, dispatched != null && dispatched.getStatus() == OrderStatus.DISPATCHED,
+                "order status updated to DISPATCHED");
+            check(s, dispatched != null && "DHL".equals(dispatched.getCourier()),
+                "courier info stored: " + (dispatched != null ? dispatched.getCourier() : "null"));
+
+            try {
+                int qtyBefore = wsSvc.getStockItem(1).getQuantity();
+                orderSvc.markDelivered(oid);
+                int qtyAfter = wsSvc.getStockItem(1).getQuantity();
+                check(s, qtyAfter == qtyBefore + 50,
+                    "markDelivered increases stock for line 1 (" + qtyBefore + " → " + qtyAfter + ")");
+                check(s, orderSvc.getOrder(oid).getStatus() == OrderStatus.DELIVERED,
+                    "order status updated to DELIVERED");
+                // clean up
+                wsSvc.decreaseStock(1, 50);
+                wsSvc.decreaseStock(2, 30);
+            } catch (StockException e) { fail(s, "markDelivered threw StockException: " + e.getMessage()); }
+        }
+
+        List<WholesaleOrder> history = orderSvc.getAllOrders();
+        check(s, !history.isEmpty(), "getAllOrders returns order history (" + history.size() + " order(s))");
+
+        // --- 7. OnlineSaleService + MockPuAdapter (PU integration) ---
+        System.out.println("\n--- 7. OnlineSaleService + MockPuAdapter ---");
+        StockService puSvc      = new StockService(new StockRepositoryImpl());
+        OnlineSaleService onlineSvc = new OnlineSaleService(puSvc);
+        MockPuAdapter puAdapter     = new MockPuAdapter(onlineSvc);
+
+        try {
+            int beforePara = puSvc.getStockItem(1).getQuantity();
+            List<OnlineSaleItem> saleItems = Arrays.asList(
+                new OnlineSaleItem(1, 5), new OnlineSaleItem(4, 3));
+            OnlineSale sale = new OnlineSale("PU-TEST-001", LocalDate.now(), "buyer@test.com", saleItems);
+            boolean fullApply = onlineSvc.processOnlineSale(sale);
+            int afterPara = puSvc.getStockItem(1).getQuantity();
+            check(s, fullApply, "valid online sale returns true (all items applied)");
+            check(s, afterPara == beforePara - 5,
+                "stock deducted for item 1 (" + beforePara + " → " + afterPara + ")");
+            puSvc.increaseStock(1, 5);
+            puSvc.increaseStock(4, 3);
+        } catch (StockException e) { fail(s, "online sale stock check threw: " + e.getMessage()); }
+
+        // partial sale — one item way over stock
+        OnlineSale partialSale = new OnlineSale("PU-TEST-002", LocalDate.now(), null,
+            Arrays.asList(new OnlineSaleItem(1, 1), new OnlineSaleItem(3, 99999)));
+        boolean partialApply = onlineSvc.processOnlineSale(partialSale);
+        check(s, !partialApply, "partial online sale returns false when one item exceeds stock");
+        try { puSvc.increaseStock(1, 1); } catch (StockException ignored) {}
+
+        try {
+            int beforeCet = puSvc.getStockItem(4).getQuantity();
+            boolean simResult = puAdapter.simulateSale(
+                List.of(new OnlineSaleItem(4, 2)), "sim@test.com");
+            int afterCet = puSvc.getStockItem(4).getQuantity();
+            check(s, simResult, "MockPuAdapter.simulateSale applies stock deduction");
+            check(s, afterCet == beforeCet - 2,
+                "cetirizine deducted via adapter (" + beforeCet + " → " + afterCet + ")");
+            puSvc.increaseStock(4, 2);
+        } catch (StockException e) { fail(s, "adapter simulate threw: " + e.getMessage()); }
 
         // --- Summary ---
         System.out.println("\n========== RESULTS: " + s[0] + " passed, " + s[1] + " failed ==========\n");

@@ -198,11 +198,13 @@ public class CustomerAccountUI extends JFrame {
         return customerRepo.findById(id);
     }
 
-    // dialog to add a new account holder
+    // dialog to add a new account holder — account number is auto-generated
     private void handleAddCustomer() {
+        // generate the next account number before showing the form
+        String generatedAcctNum = customerRepo.generateAccountNumber();
+
         JTextField nameField    = new JTextField();
         JTextField addressField = new JTextField();
-        JTextField accountField = new JTextField();
         JTextField limitField   = new JTextField("500.00");
         JComboBox<DiscountType> discountCombo = new JComboBox<>(DiscountType.values());
         JTextField rateField    = new JTextField("0");
@@ -211,10 +213,15 @@ public class CustomerAccountUI extends JFrame {
         discountCombo.addActionListener(e ->
             rateField.setEnabled(discountCombo.getSelectedItem() == DiscountType.FIXED));
 
+        // show the auto-generated number as a read-only label so staff can note it down
+        JLabel acctLabel = new JLabel(generatedAcctNum);
+        acctLabel.setFont(new Font("Arial", Font.BOLD, 13));
+        acctLabel.setForeground(UITheme.PRIMARY);
+
         Object[] fields = {
+            "Account Number (auto):", acctLabel,
             "Name:", nameField,
             "Address:", addressField,
-            "Account Number:", accountField,
             "Credit Limit (£):", limitField,
             "Discount Type:", discountCombo,
             "Fixed Discount Rate (%):", rateField
@@ -228,16 +235,18 @@ public class CustomerAccountUI extends JFrame {
             Customer newCustomer = new Customer(
                 nameField.getText().trim(),
                 addressField.getText().trim(),
-                accountField.getText().trim(),
+                generatedAcctNum,
                 Double.parseDouble(limitField.getText().trim()),
                 dtype, rate
             );
             int id = customerRepo.save(newCustomer);
             if (id > 0) {
                 loadCustomerData(null);
-                JOptionPane.showMessageDialog(this, "Account holder added.", "Added", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(this,
+                    "Account holder added.\nAccount number: " + generatedAcctNum,
+                    "Added", JOptionPane.INFORMATION_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(this, "Failed — check the account number is unique.", "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Failed to create account.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Invalid number in credit limit or rate field.", "Invalid Input", JOptionPane.ERROR_MESSAGE);

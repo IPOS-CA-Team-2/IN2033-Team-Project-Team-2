@@ -199,6 +199,26 @@ public class CustomerRepositoryImpl implements CustomerRepository {
         }
     }
 
+    @Override
+    public String generateAccountNumber() {
+        // get the highest existing CSM account number and increment it
+        String sql = "SELECT account_number FROM customers WHERE account_number LIKE 'CSM%' ORDER BY account_number DESC LIMIT 1";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                String last = rs.getString("account_number");
+                // parse the numeric suffix (e.g. CSM000125 → 125)
+                int next = Integer.parseInt(last.substring(3)) + 1;
+                return String.format("CSM%06d", next);
+            }
+        } catch (SQLException | NumberFormatException e) {
+            System.err.println("db error generating account number: " + e.getMessage());
+        }
+        // no customers yet — start from 1
+        return "CSM000001";
+    }
+
     // helper — binds all customer fields to a prepared statement (14 params)
     private void setCustomerParams(PreparedStatement stmt, Customer c) throws SQLException {
         stmt.setString(1, c.getName());
