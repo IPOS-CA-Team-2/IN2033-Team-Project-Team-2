@@ -123,6 +123,54 @@ public class DatabaseManager {
                 )
             """);
 
+            // wholesale_orders — orders placed by merchant with infopharma (sa)
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS wholesale_orders (
+                    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                    order_date        TEXT NOT NULL,
+                    status            TEXT NOT NULL DEFAULT 'PENDING',
+                    dispatch_date     TEXT,
+                    courier           TEXT,
+                    courier_ref       TEXT,
+                    expected_delivery TEXT
+                )
+            """);
+
+            // wholesale_order_lines — individual items within each wholesale order
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS wholesale_order_lines (
+                    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                    order_id  INTEGER NOT NULL,
+                    item_id   INTEGER NOT NULL,
+                    item_name TEXT NOT NULL,
+                    quantity  INTEGER NOT NULL,
+                    unit_cost REAL NOT NULL,
+                    FOREIGN KEY (order_id) REFERENCES wholesale_orders(id)
+                )
+            """);
+
+            // online_sales — records of sale events received from ipos-pu
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS online_sales (
+                    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                    pu_order_id    TEXT NOT NULL,
+                    received_date  TEXT NOT NULL,
+                    customer_email TEXT,
+                    fully_applied  INTEGER NOT NULL DEFAULT 1
+                )
+            """);
+
+            // online_sale_items — line items within each incoming pu sale
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS online_sale_items (
+                    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                    online_sale_id INTEGER NOT NULL,
+                    item_id        INTEGER NOT NULL,
+                    quantity       INTEGER NOT NULL,
+                    FOREIGN KEY (online_sale_id) REFERENCES online_sales(id)
+                )
+            """);
+
             // seed stock — bulk costs with 30% markup applied in the app to get retail price
             stmt.execute("""
                 INSERT OR IGNORE INTO stock (id, name, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold) VALUES

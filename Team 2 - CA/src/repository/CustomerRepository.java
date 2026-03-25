@@ -33,4 +33,7 @@ public interface CustomerRepository {
 
     // delete an account holder
     boolean delete(int customerId);
+
+    // generate the next available account number in CSM format (e.g. CSM000004)
+    String generateAccountNumber();
 }
