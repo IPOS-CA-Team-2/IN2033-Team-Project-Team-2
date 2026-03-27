@@ -75,7 +75,7 @@ public class Dashboard extends JFrame {
         JButton viewStock   = UITheme.primaryBtn("View Stock");
         JButton viewReports = UITheme.primaryBtn("View Reports");
 
-        manageUsers.addActionListener(e -> JOptionPane.showMessageDialog(this, "User Management — coming soon"));
+        manageUsers.addActionListener(e -> new StaffManagementUI());
         viewStock.addActionListener(e -> new StockManagementUI());
         viewReports.addActionListener(e -> JOptionPane.showMessageDialog(this, "Reports — coming soon"));
 
