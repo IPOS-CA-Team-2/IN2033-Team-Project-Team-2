@@ -20,7 +20,7 @@ public class StaffManagementUI extends JFrame {
         setLayout(new BorderLayout(0, 0));
         UITheme.applyFrameBackground(this);
 
-
+        add(topSection(), BorderLayout.NORTH);
         add(mainSection(), BorderLayout.CENTER);
         add(bottomSection(), BorderLayout.SOUTH);
 
@@ -29,6 +29,71 @@ public class StaffManagementUI extends JFrame {
 
 
         setVisible(true);
+    }
+
+    private JPanel topSection() {
+        // adding a search bar at the very top to search for specific users by their name, username or role
+        // returns everything that matches
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(UITheme.DARK_HEADER);
+        header.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
+
+
+        // adds management text on the left of the top bar
+        // add a filler cause it looks empty without it
+        JLabel titleLabel = new JLabel("Staff Management");
+        titleLabel.setFont(UITheme.FONT_TITLE);
+        titleLabel.setForeground(Color.WHITE);
+
+
+
+        // adds search bar on the right of the top bar
+        JLabel searchLabel = new JLabel("Search: ");
+        searchLabel.setFont(UITheme.FONT_BOLD);
+        searchLabel.setForeground(Color.WHITE);
+
+
+
+        JTextField searchField = new JTextField(18);
+        UITheme.styleTextField(searchField);
+
+        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate (javax.swing.event.DocumentEvent e) {
+                filterTable(searchField.getText());
+            }
+
+            public void removeUpdate (javax.swing.event.DocumentEvent e) {
+                filterTable(searchField.getText());
+            }
+
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                filterTable(searchField.getText());
+            }
+        });
+
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        searchPanel.setOpaque(false);
+        searchPanel.add(searchLabel);
+        searchPanel.add(searchField);
+
+
+        header.add(searchPanel, BorderLayout.EAST);
+        header.add(titleLabel, BorderLayout.WEST);
+
+        return header;
+    }
+
+    private void filterTable(String query) {
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
+        table.setRowSorter(sorter);
+        if (query == null || query.isBlank()) {
+            sorter.setRowFilter(null);
+        } else {
+            // if query equals to anything found on first, second and fourth column
+            // third column isnt required as its the password
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + query, 1, 2, 4));
+        }
     }
 
     private JPanel mainSection() {
