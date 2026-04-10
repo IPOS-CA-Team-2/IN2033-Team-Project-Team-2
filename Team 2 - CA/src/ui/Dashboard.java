@@ -77,7 +77,8 @@ public class Dashboard extends JFrame {
 
         manageUsers.addActionListener(e -> new StaffManagementUI());
         viewStock.addActionListener(e -> new StockManagementUI());
-        viewReports.addActionListener(e -> JOptionPane.showMessageDialog(this, "Reports — coming soon"));
+        viewReports.addActionListener(e -> new ReportsUI(currentUser, 1));
+
 
         return wrapMenuButtons(new JButton[]{manageUsers, viewStock, viewReports});
     }
