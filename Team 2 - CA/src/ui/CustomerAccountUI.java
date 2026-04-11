@@ -8,6 +8,7 @@ import service.ReminderService;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.util.List;
 
@@ -43,12 +44,81 @@ public class CustomerAccountUI extends JPanel {
         setLayout(new BorderLayout());
         setOpaque(false);
 
-        add(buildHeader(), BorderLayout.NORTH);
+        add(topSection(), BorderLayout.NORTH);
+        //add(buildHeader(), BorderLayout.NORTH);
         add(buildTablePanel(), BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
 
         loadCustomerData(null);
     }
+
+
+    private JPanel topSection() {
+        // adding a search bar at the very top to search for name of drug or by id
+        // returns everything that matches
+        // copied from StaffManagementUI
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(UITheme.DARK_HEADER);
+        header.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
+
+
+        // adds management text on the left of the top bar
+        // add a filler cause it looks empty without it
+        JLabel titleLabel = new JLabel("Customer Accounts");
+        titleLabel.setFont(UITheme.FONT_TITLE);
+        titleLabel.setForeground(Color.WHITE);
+
+
+
+        // adds search bar on the right of the top bar
+        JLabel searchLabel = new JLabel("Search: ");
+        searchLabel.setFont(UITheme.FONT_BOLD);
+        searchLabel.setForeground(Color.WHITE);
+
+
+
+        JTextField searchField = new JTextField(18);
+        UITheme.styleTextField(searchField);
+
+        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate (javax.swing.event.DocumentEvent e) {
+                filterTable(searchField.getText());
+            }
+
+            public void removeUpdate (javax.swing.event.DocumentEvent e) {
+                filterTable(searchField.getText());
+            }
+
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                filterTable(searchField.getText());
+            }
+        });
+
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        searchPanel.setOpaque(false);
+        searchPanel.add(searchLabel);
+        searchPanel.add(searchField);
+
+
+        header.add(searchPanel, BorderLayout.EAST);
+        header.add(titleLabel, BorderLayout.WEST);
+
+        return header;
+    }
+
+    private void filterTable(String query) {
+        // check for ID, account #, name and status
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
+        customerTable.setRowSorter(sorter);
+        if (query == null || query.isBlank()) {
+            sorter.setRowFilter(null);
+        } else {
+            // if equals to anything on first  or second column
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + query, 0, 1, 2, 5));
+        }
+    }
+
 
     // header with title left, search controls right
     private JPanel buildHeader() {
