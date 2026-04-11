@@ -77,10 +77,6 @@ public class Dashboard extends JFrame {
 
     // builds a centered column of menu buttons with consistent styling
     private void buildAdminMenu(JTabbedPane tabs) {
-        JButton manageUsers = UITheme.primaryBtn("Manage Staff Users");
-        JButton viewStock   = UITheme.primaryBtn("View Stock");
-        JButton viewReports = UITheme.primaryBtn("View Reports");
-
         tabs.addTab("Manage Staff Users", new StaffManagementUI());
         tabs.addTab("View Stock", new StockManagementUI());
         tabs.addTab("View Reports", new ReportsUI(currentUser, 0));
