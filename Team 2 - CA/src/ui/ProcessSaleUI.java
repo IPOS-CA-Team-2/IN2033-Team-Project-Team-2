@@ -15,7 +15,7 @@ import java.util.List;
 
 // sale screen for pharmacists — pick items, set payment, process sale, show receipt
 // supports both walk-in cash customers and account holders
-public class ProcessSaleUI extends JFrame {
+public class ProcessSaleUI extends JPanel {
 
     private final SaleService saleService;
     private final AccountService accountService;
@@ -55,19 +55,15 @@ public class ProcessSaleUI extends JFrame {
             accountService
         );
 
-        setTitle("IPOS-CA — Process Sale");
-        setSize(1150, 730);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setLayout(new BorderLayout(10, 10));
-        UITheme.applyFrameBackground(this);
+
+        setLayout(new BorderLayout());
+        setOpaque(false);
 
         add(buildHeader(), BorderLayout.NORTH);
         add(buildMainPanel(), BorderLayout.CENTER);
         add(buildPaymentPanel(), BorderLayout.SOUTH);
 
         loadCatalogue();
-        setLocationRelativeTo(null);
-        setVisible(true);
     }
 
     private JPanel buildHeader() {

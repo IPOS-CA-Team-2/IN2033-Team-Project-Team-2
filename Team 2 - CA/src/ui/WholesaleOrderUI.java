@@ -19,7 +19,7 @@ import java.util.List;
 // wholesale order management screen
 // pharmacists and managers can place orders with infopharma (sa),
 // track order status, mark deliveries as received, and simulate pu online sales
-public class WholesaleOrderUI extends JFrame {
+public class WholesaleOrderUI extends JPanel {
 
     private final User                  currentUser;
     private final WholesaleOrderService orderService;
@@ -45,19 +45,14 @@ public class WholesaleOrderUI extends JFrame {
         this.orderService = new WholesaleOrderService(new MockSaGateway(), stockService);
         this.puAdapter    = new MockPuAdapter(new OnlineSaleService(stockService));
 
-        setTitle("IPOS-CA — Wholesale Orders");
-        setSize(1000, 580);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout());
-        UITheme.applyFrameBackground(this);
+        setOpaque(false);
 
         add(buildHeader(), BorderLayout.NORTH);
         add(buildTablePanel(), BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
 
         loadOrders();
-        setLocationRelativeTo(null);
-        setVisible(true);
     }
 
     private JPanel buildHeader() {

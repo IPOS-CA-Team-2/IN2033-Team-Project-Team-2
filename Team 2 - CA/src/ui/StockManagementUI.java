@@ -8,12 +8,13 @@ import service.StockService;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.util.List;
 
 // stock management screen — view all stock, update quantities, add/remove items
 // accessible by pharmacist and admin from the dashboard
-public class StockManagementUI extends JFrame {
+public class StockManagementUI extends JPanel {
 
     private final StockService stockService;
     private DefaultTableModel tableModel;
@@ -32,20 +33,15 @@ public class StockManagementUI extends JFrame {
 
     public StockManagementUI() {
         this.stockService = new StockService(new StockRepositoryImpl());
-
-        setTitle("IPOS-CA — Stock Management");
-        setSize(900, 600);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout());
-        UITheme.applyFrameBackground(this);
+        setOpaque(false);
+
 
         add(UITheme.createHeaderPanel("Stock Management"), BorderLayout.NORTH);
         add(buildTablePanel(), BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
 
         loadStockData();
-        setLocationRelativeTo(null);
-        setVisible(true);
     }
 
     // table showing all stock items

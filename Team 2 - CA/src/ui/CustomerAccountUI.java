@@ -14,7 +14,7 @@ import java.util.List;
 // account holder management screen
 // pharmacists can view/add/edit accounts and record payments
 // managers also get: generate reminders, restore in-default accounts
-public class CustomerAccountUI extends JFrame {
+public class CustomerAccountUI extends JPanel {
 
     private final User currentUser;
     private final CustomerRepositoryImpl customerRepo;
@@ -40,19 +40,14 @@ public class CustomerAccountUI extends JFrame {
         this.accountService = new AccountService(customerRepo);
         this.reminderService = new ReminderService(customerRepo);
 
-        setTitle("IPOS-CA — Customer Accounts");
-        setSize(980, 580);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout());
-        UITheme.applyFrameBackground(this);
+        setOpaque(false);
 
         add(buildHeader(), BorderLayout.NORTH);
         add(buildTablePanel(), BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
 
         loadCustomerData(null);
-        setLocationRelativeTo(null);
-        setVisible(true);
     }
 
     // header with title left, search controls right
