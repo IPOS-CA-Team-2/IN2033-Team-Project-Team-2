@@ -16,7 +16,7 @@ import java.util.Date;
 
 // manager-only reports screen — three tabs: turnover, stock availability, aggregated debt
 // each tab pulls data from ReportService and displays it in a styled table with summary footer
-public class ReportsUI extends JFrame {
+public class ReportsUI extends JPanel {
 
     private final ReportService reportService;
     private final JTabbedPane   tabs;
@@ -41,11 +41,8 @@ public class ReportsUI extends JFrame {
         WholesaleOrderRepository orderRepo = new WholesaleOrderRepositoryImpl();
         this.reportService = new ReportService(saleRepo, custRepo, stockSvc, orderRepo);
 
-        setTitle("IPOS-CA — Management Reports");
-        setSize(1000, 620);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout());
-        UITheme.applyFrameBackground(this);
+        setOpaque(false);
 
         add(UITheme.createHeaderPanel("Management Reports"), BorderLayout.NORTH);
 
@@ -59,9 +56,6 @@ public class ReportsUI extends JFrame {
 
         // load stock on open since it needs no input
         refreshStock();
-
-        setLocationRelativeTo(null);
-        setVisible(true);
     }
 
     // ---- turnover tab ----

@@ -7,28 +7,21 @@ import javax.swing.table.*;
 import java.awt.*;
 import java.sql.*;
 
-public class StaffManagementUI extends JFrame {
+public class StaffManagementUI extends JPanel {
 
     private static final String[] COLUMNS = {"ID", "Name", "Username", "Password", "Role"};
     private DefaultTableModel tableModel;
     private JTable table;
 
     public StaffManagementUI() {
-        setTitle("IPOS-CA — Staff Management");
-        setSize(820, 540);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setLayout(new BorderLayout(0, 0));
-        UITheme.applyFrameBackground(this);
+        setLayout(new BorderLayout());
+        setOpaque(false);
+
 
         add(topSection(), BorderLayout.NORTH);
         add(mainSection(), BorderLayout.CENTER);
         add(bottomSection(), BorderLayout.SOUTH);
-
-        setLocationRelativeTo(null);
         loadUsers();
-
-
-        setVisible(true);
     }
 
     private JPanel topSection() {
@@ -197,7 +190,7 @@ public class StaffManagementUI extends JFrame {
     }
 
     private void showAddUserDialog() {
-        JDialog dialog = new JDialog(this, "Add New Staff User", true);
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), "Add New Staff User", Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setSize(380, 320);
         dialog.setLayout(new BorderLayout());
         dialog.setLocationRelativeTo(this);

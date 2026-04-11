@@ -56,17 +56,23 @@ public class Dashboard extends JFrame {
         return header;
     }
 
-    private JPanel buildMenuPanel() {
+    private JTabbedPane buildMenuPanel() {
+        // changed to tabs
+        JTabbedPane tabs = new JTabbedPane(JTabbedPane.TOP);
+        tabs.setFont(UITheme.FONT_BOLD);
+        tabs.setBackground(UITheme.LIGHT_BG);
         switch (currentUser.getRole()) {
-            case "Admin":      return buildAdminMenu();
-            case "Pharmacist": return buildPharmacistMenu();
-            case "Manager":    return buildManagerMenu();
-            default:
-                JPanel fallback = new JPanel();
-                fallback.setOpaque(false);
-                fallback.add(new JLabel("Unknown role."));
-                return fallback;
+            case "Admin":
+                buildAdminMenu(tabs);
+                break;
+            case "Pharmacist":
+                buildPharmacistMenu(tabs);
+                break;
+            case "Manager":
+                buildManagerMenu(tabs);
+                break;
         }
+        return tabs;
     }
 
     // builds a centered column of menu buttons with consistent styling
@@ -83,50 +89,21 @@ public class Dashboard extends JFrame {
         return wrapMenuButtons(new JButton[]{manageUsers, viewStock, viewReports});
     }
 
-    private JPanel buildPharmacistMenu() {
-        JButton processSale    = UITheme.primaryBtn("Process Sale");
-        JButton maintainStock  = UITheme.primaryBtn("Maintain Local Stock");
-        JButton checkAccounts  = UITheme.primaryBtn("Customer Accounts");
-        JButton wholesaleOrder = UITheme.primaryBtn("Wholesale Orders");
+    private void buildPharmacistMenu(JTabbedPane tabs) {
+        // converted to tabs -done
+        tabs.addTab("Process Sale", new ProcessSaleUI(currentUser));
+        tabs.addTab("Maintain Local Stock", new StockManagementUI());
+        tabs.addTab("Customer Accounts", new CustomerAccountUI(currentUser));
+        tabs.addTab("Wholesale Orders", new WholesaleOrderUI(currentUser));
 
-        processSale.addActionListener(e -> new ProcessSaleUI(currentUser));
-        maintainStock.addActionListener(e -> new StockManagementUI());
-        checkAccounts.addActionListener(e -> new CustomerAccountUI(currentUser));
-        wholesaleOrder.addActionListener(e -> new WholesaleOrderUI(currentUser));
-
-        return wrapMenuButtons(new JButton[]{processSale, maintainStock, checkAccounts, wholesaleOrder});
     }
 
-    private JPanel buildManagerMenu() {
-        JButton salesReport    = UITheme.primaryBtn("Sales / Turnover Report");
-        JButton stockReport    = UITheme.primaryBtn("Stock Availability Report");
-        JButton debtReport     = UITheme.primaryBtn("Aggregated Debt Report");
-        JButton customerAccounts = UITheme.primaryBtn("Customer Accounts");
-        JButton placeOrder     = UITheme.primaryBtn("Place Wholesale Order");
+    private void buildManagerMenu(JTabbedPane tabs) {
+        // converted tyo tabs -done
+        // converted to one singular tab for all 3 reports as there are sub tabs contained within
+        tabs.addTab("View Reports", new ReportsUI(currentUser, 0));
+        tabs.addTab("Customer Accounts", new CustomerAccountUI(currentUser));
+        tabs.addTab("Place Wholesale Order", new WholesaleOrderUI(currentUser));
 
-        salesReport.addActionListener(e -> new ReportsUI(currentUser, 0));
-        stockReport.addActionListener(e -> new ReportsUI(currentUser, 1));
-        debtReport.addActionListener(e -> new ReportsUI(currentUser, 2));
-        customerAccounts.addActionListener(e -> new CustomerAccountUI(currentUser));
-        placeOrder.addActionListener(e -> new WholesaleOrderUI(currentUser));
-
-        return wrapMenuButtons(new JButton[]{salesReport, stockReport, debtReport, customerAccounts, placeOrder});
-    }
-
-    // wraps an array of buttons in a centered vertical panel with consistent sizing
-    private JPanel wrapMenuButtons(JButton[] buttons) {
-        JPanel inner = new JPanel(new GridLayout(buttons.length, 1, 0, 14));
-        inner.setOpaque(false);
-
-        for (JButton btn : buttons) {
-            btn.setFont(new Font("Arial", Font.BOLD, 14));
-            btn.setPreferredSize(new Dimension(260, 50));
-            inner.add(btn);
-        }
-
-        JPanel centered = new JPanel(new GridBagLayout());
-        centered.setOpaque(false);
-        centered.add(inner, new GridBagConstraints());
-        return centered;
     }
 }
