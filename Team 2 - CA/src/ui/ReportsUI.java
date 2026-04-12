@@ -9,10 +9,12 @@ import service.StockService;
 import javax.swing.*;
 import javax.swing.table.*;
 import java.awt.*;
+import java.text.MessageFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Calendar;
 import java.util.Date;
+
 
 // manager-only reports screen — three tabs: turnover, stock availability, aggregated debt
 // each tab pulls data from ReportService and displays it in a styled table with summary footer
@@ -33,6 +35,10 @@ public class ReportsUI extends JPanel {
     // debt tab components
     private DefaultTableModel debtModel;
     private JLabel            debtFooter;
+
+    private JTable turnoverTable;
+    private JTable stockTable;
+    private JTable debtTable;
 
     public ReportsUI(User user, int initialTab) {
         SaleRepository          saleRepo  = new SaleRepositoryImpl();
@@ -77,6 +83,10 @@ public class ReportsUI extends JPanel {
         JButton generateBtn = UITheme.primaryBtn("Generate Report");
         generateBtn.addActionListener(e -> generateTurnover());
 
+        JButton printBtn = UITheme.secondaryBtn("Print / Save PDF");
+        printBtn.addActionListener(e -> printTable(turnoverTable, "Sales / Turnover Report"));
+
+
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
         controls.setOpaque(false);
         controls.add(new JLabel("From:"));
@@ -84,6 +94,9 @@ public class ReportsUI extends JPanel {
         controls.add(new JLabel("To:"));
         controls.add(toSpinner);
         controls.add(generateBtn);
+
+        controls.add(printBtn);
+
 
         turnoverSummary = new JLabel(" ");
         turnoverSummary.setFont(UITheme.FONT_BODY);
@@ -97,15 +110,72 @@ public class ReportsUI extends JPanel {
         turnoverModel = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
-        JTable table = new JTable(turnoverModel);
-        UITheme.styleTable(table);
-        table.getColumnModel().getColumn(0).setMaxWidth(70);
-        table.getColumnModel().getColumn(4).setMinWidth(130);
+        turnoverTable = new JTable(turnoverModel);
+        UITheme.styleTable(turnoverTable);
+        turnoverTable.getColumnModel().getColumn(0).setMaxWidth(70);
+        turnoverTable.getColumnModel().getColumn(4).setMinWidth(130);
 
         panel.add(top, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        panel.add(new JScrollPane(turnoverTable), BorderLayout.CENTER);
         return panel;
     }
+
+    private void printTable(JTable table, String title) {
+        if (table.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this,
+                    "No data to print. Please generate the report first.",
+                    "Nothing to Print", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+            // build HTML
+            StringBuilder html = new StringBuilder();
+            html.append("<html><head><title>").append(title).append("</title>");
+            html.append("<script>window.onload = function() { window.print(); }</script>");
+            html.append("<style>");
+            html.append("body { font-family: Arial, sans-serif; font-size: 12px; }");
+            html.append("h2 { color: #2c3e50; }");
+            html.append("table { border-collapse: collapse; width: 100%; }");
+            html.append("th { background: #2c3e50; color: white; padding: 6px; text-align: left; }");
+            html.append("td { padding: 5px; border-bottom: 1px solid #ddd; }");
+            html.append("tr:nth-child(even) { background: #f8f9fa; }");
+            html.append("</style></head><body>");
+            html.append("<h2>").append(title).append("</h2>");
+            html.append("<table><thead><tr>");
+
+            // headers
+            for (int c = 0; c < table.getColumnCount(); c++) {
+                html.append("<th>").append(table.getColumnName(c)).append("</th>");
+            }
+            html.append("</tr></thead><tbody>");
+
+            // rows
+            for (int r = 0; r < table.getRowCount(); r++) {
+                html.append("<tr>");
+                for (int c = 0; c < table.getColumnCount(); c++) {
+                    Object val = table.getValueAt(r, c);
+                    html.append("<td>").append(val != null ? val.toString() : "").append("</td>");
+                }
+                html.append("</tr>");
+            }
+
+            html.append("</tbody></table></body></html>");
+
+            // write to temp file
+            java.io.File temp = java.io.File.createTempFile("ipos_report_", ".html");
+            temp.deleteOnExit();
+            java.nio.file.Files.writeString(temp.toPath(), html.toString());
+
+            // open in browser
+            Desktop.getDesktop().browse(temp.toURI());
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Could not open report: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
 
     private void generateTurnover() {
         LocalDate from = toLocalDate((Date) fromSpinner.getValue());
@@ -152,13 +222,17 @@ public class ReportsUI extends JPanel {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
-        JTable table = new JTable(stockModel);
-        UITheme.styleTable(table);
-        table.getColumnModel().getColumn(1).setMaxWidth(60);
+        JButton printBtn = UITheme.secondaryBtn("Print / Save PDF");
+        printBtn.addActionListener(e -> printTable(stockTable, "Stock Availability Report"));
+        controls.add(printBtn);
+
+        stockTable = new JTable(stockModel);
+        UITheme.styleTable(stockTable);
+        stockTable.getColumnModel().getColumn(1).setMaxWidth(60);
 
         // highlight low-stock rows light red
         Color LOW_STOCK_COLOR = new Color(255, 210, 210);
-        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+        stockTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object value,
                     boolean isSelected, boolean hasFocus, int row, int col) {
@@ -178,7 +252,7 @@ public class ReportsUI extends JPanel {
         stockFooter.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
 
         panel.add(controls, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        panel.add(new JScrollPane(stockTable), BorderLayout.CENTER);
         panel.add(stockFooter, BorderLayout.SOUTH);
         return panel;
     }
@@ -223,11 +297,11 @@ public class ReportsUI extends JPanel {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
 
-        JTable table = new JTable(debtModel);
-        UITheme.styleTable(table);
+        debtTable = new JTable(debtModel);
+        UITheme.styleTable(debtTable);
 
         // colour status cell by account state
-        table.getColumnModel().getColumn(2).setCellRenderer(new DefaultTableCellRenderer() {
+        debtTable.getColumnModel().getColumn(2).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object value,
                     boolean isSelected, boolean hasFocus, int row, int col) {
@@ -245,12 +319,16 @@ public class ReportsUI extends JPanel {
             }
         });
 
+        JButton printBtn = UITheme.secondaryBtn("Print / Save PDF");
+        printBtn.addActionListener(e -> printTable(debtTable, "Aggregated Debt Report"));
+        controls.add(printBtn);
+
         debtFooter = new JLabel("  Press 'Generate Report' to load current debt figures.");
         debtFooter.setFont(UITheme.FONT_BOLD);
         debtFooter.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
 
         panel.add(controls, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        panel.add(new JScrollPane(debtTable), BorderLayout.CENTER);
         panel.add(debtFooter, BorderLayout.SOUTH);
         return panel;
     }
