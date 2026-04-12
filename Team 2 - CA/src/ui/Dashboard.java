@@ -8,24 +8,18 @@ import java.awt.*;
 
 // role-based dashboard shown after login
 // routes to different screens depending on Admin / Pharmacist / Manager
-public class Dashboard extends JFrame {
+public class Dashboard extends JPanel {
 
     private final User currentUser;
 
     public Dashboard(User user) {
         this.currentUser = user;
-
-        setTitle("IPOS-CA — " + user.getRole() + " Dashboard");
-        setSize(Main.SCREEN_WIDTH, Main.SCREEN_HEIGHT);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
-        UITheme.applyFrameBackground(this);
+        setOpaque(true);
+        setBackground(UITheme.LIGHT_BG);
 
         add(buildHeader(), BorderLayout.NORTH);
         add(buildMenuPanel(), BorderLayout.CENTER);
-
-        setLocationRelativeTo(null);
-        setVisible(true);
     }
 
     // dark header with welcome text left, role label + logout right
@@ -43,7 +37,15 @@ public class Dashboard extends JFrame {
         roleLabel.setForeground(UITheme.SUBTEXT);
 
         JButton logoutButton = UITheme.secondaryBtn("Logout");
-        logoutButton.addActionListener(e -> { dispose(); Main.LoginScreen(); });
+
+        logoutButton.addActionListener(e -> {
+            JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
+            frame.setTitle("IPOS-CA");
+            frame.getContentPane().removeAll();
+            Main.LoginScreen(frame);
+            frame.revalidate();
+            frame.repaint();
+        });
 
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         rightPanel.setOpaque(false);
