@@ -7,9 +7,9 @@ import java.util.List;
 // represents a wholesale order placed by the merchant with infopharma (sa)
 public class WholesaleOrder {
 
-    private final int            orderId;
-    private final LocalDate      orderDate;
-    private final OrderStatus    status;
+    private final int             orderId;
+    private final LocalDate       orderDate;
+    private final OrderStatus     status;
     private final List<OrderLine> lines;
 
     // dispatch info — populated once sa marks the order as dispatched
@@ -17,6 +17,10 @@ public class WholesaleOrder {
     private final String    courier;
     private final String    courierRef;
     private final LocalDate expectedDelivery;
+
+    // sa-assigned order id — stored after successful submission to real sa system
+    // 0 means not yet submitted to sa (mock mode or submission failed)
+    private int saOrderId = 0;
 
     // full constructor — used when loading from db or receiving a status update
     public WholesaleOrder(int orderId, LocalDate orderDate, OrderStatus status,
@@ -43,12 +47,14 @@ public class WholesaleOrder {
         return lines.stream().mapToDouble(OrderLine::getLineTotal).sum();
     }
 
-    public int             getOrderId()          { return orderId; }
-    public LocalDate       getOrderDate()         { return orderDate; }
-    public OrderStatus     getStatus()            { return status; }
-    public List<OrderLine> getLines()             { return lines; }
-    public LocalDate       getDispatchDate()      { return dispatchDate; }
-    public String          getCourier()           { return courier; }
-    public String          getCourierRef()        { return courierRef; }
-    public LocalDate       getExpectedDelivery()  { return expectedDelivery; }
+    public int             getOrderId()         { return orderId; }
+    public LocalDate       getOrderDate()        { return orderDate; }
+    public OrderStatus     getStatus()           { return status; }
+    public List<OrderLine> getLines()            { return lines; }
+    public LocalDate       getDispatchDate()     { return dispatchDate; }
+    public String          getCourier()          { return courier; }
+    public String          getCourierRef()       { return courierRef; }
+    public LocalDate       getExpectedDelivery() { return expectedDelivery; }
+    public int             getSaOrderId()        { return saOrderId; }
+    public void            setSaOrderId(int id)  { this.saOrderId = id; }
 }

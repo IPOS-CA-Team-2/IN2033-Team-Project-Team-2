@@ -1,5 +1,6 @@
 package ui;
 
+import app.AppContext;
 import exception.StockException;
 import model.StockItem;
 import repository.StockRepositoryImpl;
@@ -43,6 +44,10 @@ public class StockManagementUI extends JPanel {
         add(buildButtonPanel(), BorderLayout.SOUTH);
 
         loadStockData();
+
+        // register for live stock refresh — when pu pushes an online sale via CaApiServer,
+        // AppContext.notifyStockRefresh() calls loadStockData() on the EDT automatically
+        AppContext.addStockRefreshListener(this::loadStockData);
     }
 
     private JPanel topSection() {

@@ -5,6 +5,7 @@ import integration.ISaGateway;
 import model.OrderLine;
 import model.OrderStatus;
 import model.WholesaleOrder;
+import repository.WholesaleOrderRepositoryImpl;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -15,10 +16,13 @@ public class WholesaleOrderService {
 
     private final ISaGateway   gateway;
     private final StockService stockService;
+    // direct repo access needed for findBySaOrderId — gateway doesn't expose this
+    private final WholesaleOrderRepositoryImpl repo;
 
     public WholesaleOrderService(ISaGateway gateway, StockService stockService) {
         this.gateway      = gateway;
         this.stockService = stockService;
+        this.repo         = new WholesaleOrderRepositoryImpl();
     }
 
     // submit a new wholesale order to sa — returns the saved order with its id
@@ -32,7 +36,7 @@ public class WholesaleOrderService {
         return gateway.getOrderHistory();
     }
 
-    // get a specific order by id
+    // get a specific order by local id
     public WholesaleOrder getOrder(int orderId) {
         return gateway.getOrderById(orderId);
     }
@@ -42,9 +46,8 @@ public class WholesaleOrderService {
     public void markDelivered(int orderId) {
         WholesaleOrder order = gateway.getOrderById(orderId);
         if (order == null) throw new IllegalArgumentException("order not found: " + orderId);
-        if (order.getStatus() == OrderStatus.DELIVERED) return; // already done
+        if (order.getStatus() == OrderStatus.DELIVERED) return;
 
-        // increase stock for every line in the delivery
         for (OrderLine line : order.getLines()) {
             try {
                 stockService.increaseStock(line.getItemId(), line.getQuantity());
@@ -56,6 +59,25 @@ public class WholesaleOrderService {
         }
 
         gateway.updateOrderStatus(orderId, OrderStatus.DELIVERED, null, null, null, null);
+    }
+
+    // called by CaApiServer when sa pushes an order status update to /order-update
+    // finds the local order by the sa-assigned id and updates its status
+    // if the new status is DELIVERED, stock is increased automatically
+    public void receiveStatusUpdate(int saOrderId, OrderStatus newStatus) {
+        WholesaleOrder order = repo.findBySaOrderId(saOrderId);
+        if (order == null) {
+            System.err.println("[WholesaleOrderService] No local order found for SA id=" + saOrderId);
+            return;
+        }
+
+        if (newStatus == OrderStatus.DELIVERED) {
+            markDelivered(order.getOrderId());
+        } else {
+            repo.updateStatus(order.getOrderId(), newStatus, null, null, null, null);
+        }
+
+        System.out.println("[WholesaleOrderService] Status updated for SA id=" + saOrderId + " → " + newStatus);
     }
 
     // simulate sa progressing an order's status (for demo without real sa)

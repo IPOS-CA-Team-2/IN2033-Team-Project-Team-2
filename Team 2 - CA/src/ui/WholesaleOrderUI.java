@@ -1,12 +1,9 @@
 package ui;
 
+import app.AppContext;
 import integration.MockPuAdapter;
-import integration.MockSaGateway;
 import model.*;
-import service.OnlineSaleService;
-import service.StockService;
 import service.WholesaleOrderService;
-import repository.StockRepositoryImpl;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -23,8 +20,6 @@ public class WholesaleOrderUI extends JPanel {
 
     private final User                  currentUser;
     private final WholesaleOrderService orderService;
-    private final MockPuAdapter         puAdapter;
-    private final StockService          stockService;
 
     private DefaultTableModel tableModel;
     private JTable            orderTable;
@@ -41,9 +36,8 @@ public class WholesaleOrderUI extends JPanel {
 
     public WholesaleOrderUI(User user) {
         this.currentUser  = user;
-        this.stockService = new StockService(new StockRepositoryImpl());
-        this.orderService = new WholesaleOrderService(new MockSaGateway(), stockService);
-        this.puAdapter    = new MockPuAdapter(new OnlineSaleService(stockService));
+        // services come from AppContext — wired once in Main, shared across all screens
+        this.orderService = AppContext.getOrderService();
 
         setLayout(new BorderLayout());
         setOpaque(false);
@@ -51,6 +45,10 @@ public class WholesaleOrderUI extends JPanel {
         add(buildHeader(), BorderLayout.NORTH);
         add(buildTablePanel(), BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
+
+        // register for live refresh — when sa pushes a status update via CaApiServer,
+        // AppContext.notifyOrderRefresh() calls loadOrders() on the EDT automatically
+        AppContext.addOrderRefreshListener(this::loadOrders);
 
         loadOrders();
     }
@@ -80,9 +78,10 @@ public class WholesaleOrderUI extends JPanel {
                 if (!isSelected) {
                     String status = (String) table.getValueAt(row, COL_STATUS);
                     switch (status) {
-                        case "DISPATCHED"      -> c.setBackground(new Color(212, 237, 218)); // light green
-                        case "DELIVERED"       -> c.setBackground(new Color(209, 231, 221)); // teal-ish
-                        case "BEING_PROCESSED" -> c.setBackground(new Color(255, 243, 205)); // yellow
+                        case "DISPATCHED"      -> c.setBackground(new Color(212, 237, 218));
+                        case "DELIVERED"       -> c.setBackground(new Color(209, 231, 221));
+                        case "BEING_PROCESSED" -> c.setBackground(new Color(255, 243, 205));
+                        case "CANCELLED"       -> c.setBackground(new Color(248, 215, 218));
                         default                -> c.setBackground(row % 2 == 0 ? Color.WHITE : UITheme.ROW_ALT);
                     }
                     c.setForeground(Color.BLACK);
@@ -102,7 +101,7 @@ public class WholesaleOrderUI extends JPanel {
             }
             String status = (String) tableModel.getValueAt(row, COL_STATUS);
             deliveredBtn.setEnabled("DISPATCHED".equals(status));
-            statusBtn.setEnabled(!"DELIVERED".equals(status));
+            statusBtn.setEnabled(!"DELIVERED".equals(status) && !"CANCELLED".equals(status));
         });
 
         JScrollPane scroll = new JScrollPane(orderTable);
@@ -127,7 +126,7 @@ public class WholesaleOrderUI extends JPanel {
         deliveredBtn.setEnabled(false);
         statusBtn.setEnabled(false);
 
-        placeBtn.addActionListener(e -> handlePlaceOrder());
+        placeBtn.addActionListener(e -> handlePlaceOrder(placeBtn));
         deliveredBtn.addActionListener(e -> handleMarkDelivered());
         statusBtn.addActionListener(e -> handleUpdateStatus());
         puSimBtn.addActionListener(e -> handleSimulatePuSale());
@@ -142,8 +141,8 @@ public class WholesaleOrderUI extends JPanel {
         return panel;
     }
 
-    // load all orders into the table
-    private void loadOrders() {
+    // load all orders into the table — public so AppContext refresh listeners can call it
+    public void loadOrders() {
         tableModel.setRowCount(0);
         for (WholesaleOrder order : orderService.getAllOrders()) {
             tableModel.addRow(new Object[]{
@@ -158,7 +157,6 @@ public class WholesaleOrderUI extends JPanel {
         }
     }
 
-    // returns the order id of the selected row, or -1 if nothing selected
     private int getSelectedOrderId() {
         int row = orderTable.getSelectedRow();
         if (row == -1) {
@@ -168,15 +166,15 @@ public class WholesaleOrderUI extends JPanel {
         return (int) tableModel.getValueAt(row, COL_ID);
     }
 
-    // open a dialog to build a new wholesale order from the stock catalogue
-    private void handlePlaceOrder() {
-        List<StockItem> stock = stockService.getAllStock();
+    // wrap the HTTP submission in a SwingWorker so it doesn't block the EDT
+    // the Place Order button is disabled while the call is in flight
+    private void handlePlaceOrder(JButton placeBtn) {
+        List<StockItem> stock = AppContext.getStockService().getAllStock();
         if (stock.isEmpty()) {
             JOptionPane.showMessageDialog(this, "No stock items found.", "Empty Catalogue", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        // build a table where user enters quantity to order for each item
         String[] cols = {"Item", "Bulk Cost (£)", "Current Qty", "Order Qty"};
         DefaultTableModel dm = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return c == 3; }
@@ -208,7 +206,6 @@ public class WholesaleOrderUI extends JPanel {
         if (JOptionPane.showConfirmDialog(this, content, "Place Wholesale Order",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
 
-        // collect lines where qty > 0
         List<OrderLine> lines = new ArrayList<>();
         for (int i = 0; i < stock.size(); i++) {
             Object val = dm.getValueAt(i, 3);
@@ -224,19 +221,42 @@ public class WholesaleOrderUI extends JPanel {
             return;
         }
 
-        WholesaleOrder placed = orderService.placeOrder(lines);
-        if (placed != null) {
-            loadOrders();
-            JOptionPane.showMessageDialog(this,
-                "Order #" + placed.getOrderId() + " placed successfully.\n"
-                + placed.getLines().size() + " line(s), total £" + String.format("%.2f", placed.getTotalValue()),
-                "Order Placed", JOptionPane.INFORMATION_MESSAGE);
-        } else {
-            JOptionPane.showMessageDialog(this, "Failed to place order.", "Error", JOptionPane.ERROR_MESSAGE);
-        }
+        final List<OrderLine> finalLines = lines;
+        placeBtn.setEnabled(false);
+
+        new SwingWorker<WholesaleOrder, Void>() {
+            @Override
+            protected WholesaleOrder doInBackground() {
+                return orderService.placeOrder(finalLines);
+            }
+
+            @Override
+            protected void done() {
+                placeBtn.setEnabled(true);
+                try {
+                    WholesaleOrder placed = get();
+                    loadOrders();
+                    if (placed != null) {
+                        String saInfo = placed.getSaOrderId() > 0
+                            ? "\nSA confirmed — SA Order ID: " + placed.getSaOrderId()
+                            : "\n(SA offline — saved locally only)";
+                        JOptionPane.showMessageDialog(WholesaleOrderUI.this,
+                            "Order #" + placed.getOrderId() + " placed successfully.\n"
+                            + placed.getLines().size() + " line(s), total £"
+                            + String.format("%.2f", placed.getTotalValue()) + saInfo,
+                            "Order Placed", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(WholesaleOrderUI.this,
+                            "Failed to place order.", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(WholesaleOrderUI.this,
+                        "Order error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
     }
 
-    // mark a dispatched order as delivered and increase stock
     private void handleMarkDelivered() {
         int orderId = getSelectedOrderId();
         if (orderId == -1) return;
@@ -258,7 +278,6 @@ public class WholesaleOrderUI extends JPanel {
             "Delivered", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    // simulate sa updating the order status (for demo)
     private void handleUpdateStatus() {
         int orderId = getSelectedOrderId();
         if (orderId == -1) return;
@@ -266,7 +285,6 @@ public class WholesaleOrderUI extends JPanel {
         WholesaleOrder order = orderService.getOrder(orderId);
         if (order == null) return;
 
-        // only show statuses that are valid next states
         OrderStatus current = order.getStatus();
         OrderStatus[] options = OrderStatus.values();
 
@@ -277,7 +295,6 @@ public class WholesaleOrderUI extends JPanel {
 
         if (selected == null || selected == current) return;
 
-        // if dispatching, collect courier details
         String courier = null, courierRef = null;
         LocalDate dispatchDate = null, expectedDelivery = null;
 
@@ -312,9 +329,8 @@ public class WholesaleOrderUI extends JPanel {
         loadOrders();
     }
 
-    // simulate an online sale coming in from ipos-pu and deducting stock
     private void handleSimulatePuSale() {
-        List<StockItem> stock = stockService.getAllStock();
+        List<StockItem> stock = AppContext.getStockService().getAllStock();
         if (stock.isEmpty()) {
             JOptionPane.showMessageDialog(this, "No stock items available.", "Empty Stock", JOptionPane.WARNING_MESSAGE);
             return;
@@ -351,8 +367,8 @@ public class WholesaleOrderUI extends JPanel {
         if (JOptionPane.showConfirmDialog(this, content, "Simulate PU Online Sale",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
 
-        List<OnlineSaleItem> items = new ArrayList<>();
-        List<String> skippedNames = new ArrayList<>();
+        List<OnlineSaleItem> items        = new ArrayList<>();
+        List<String>         skippedNames = new ArrayList<>();
 
         for (int i = 0; i < stock.size(); i++) {
             Object val = dm.getValueAt(i, 2);
@@ -375,7 +391,8 @@ public class WholesaleOrderUI extends JPanel {
         StringBuilder result = new StringBuilder();
 
         if (!items.isEmpty()) {
-            boolean ok = puAdapter.simulateSale(items, emailField.getText().trim());
+            boolean ok = ((MockPuAdapter) AppContext.getPuAdapter())
+                .simulateSale(items, emailField.getText().trim());
             result.append(ok ? "All items deducted successfully." : "Sale partially applied.");
         }
 

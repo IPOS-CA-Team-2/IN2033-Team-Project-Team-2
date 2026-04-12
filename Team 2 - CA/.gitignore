@@ -30,3 +30,9 @@ bin/
 
 ### Claude Code ###
 .claude/
+
+### IPOS-CA ###
+*.db
+*.db-shm
+*.db-wal
+sources.txt

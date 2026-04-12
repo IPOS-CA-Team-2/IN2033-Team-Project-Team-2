@@ -17,8 +17,8 @@ public class WholesaleOrderRepositoryImpl implements WholesaleOrderRepository {
     @Override
     public int save(WholesaleOrder order) {
         String orderSql = """
-            INSERT INTO wholesale_orders (order_date, status, dispatch_date, courier, courier_ref, expected_delivery)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO wholesale_orders (order_date, status, dispatch_date, courier, courier_ref, expected_delivery, sa_order_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """;
         String lineSql = """
             INSERT INTO wholesale_order_lines (order_id, item_id, item_name, quantity, unit_cost)
@@ -37,6 +37,7 @@ public class WholesaleOrderRepositoryImpl implements WholesaleOrderRepository {
                 stmt.setString(4, order.getCourier());
                 stmt.setString(5, order.getCourierRef());
                 stmt.setString(6, order.getExpectedDelivery() != null ? order.getExpectedDelivery().toString() : null);
+                stmt.setInt(7, order.getSaOrderId());
                 stmt.executeUpdate();
                 ResultSet keys = stmt.getGeneratedKeys();
                 orderId = keys.next() ? keys.getInt(1) : -1;
@@ -81,6 +82,21 @@ public class WholesaleOrderRepositoryImpl implements WholesaleOrderRepository {
     }
 
     @Override
+    public WholesaleOrder findBySaOrderId(int saOrderId) {
+        if (saOrderId <= 0) return null;
+        String sql = "SELECT * FROM wholesale_orders WHERE sa_order_id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, saOrderId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) return mapRow(conn, rs);
+        } catch (SQLException e) {
+            System.err.println("db error finding order by sa id: " + e.getMessage());
+        }
+        return null;
+    }
+
+    @Override
     public List<WholesaleOrder> findAll() {
         String sql = "SELECT * FROM wholesale_orders ORDER BY order_date DESC, id DESC";
         List<WholesaleOrder> list = new ArrayList<>();
@@ -118,13 +134,27 @@ public class WholesaleOrderRepositoryImpl implements WholesaleOrderRepository {
         }
     }
 
+    @Override
+    public boolean updateSaOrderId(int localOrderId, int saOrderId) {
+        String sql = "UPDATE wholesale_orders SET sa_order_id = ? WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, saOrderId);
+            stmt.setInt(2, localOrderId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("db error updating sa_order_id: " + e.getMessage());
+            return false;
+        }
+    }
+
     // maps a result set row + fetches associated lines for the given order
     private WholesaleOrder mapRow(Connection conn, ResultSet rs) throws SQLException {
         int id = rs.getInt("id");
         String sd = rs.getString("dispatch_date");
         String ed = rs.getString("expected_delivery");
 
-        return new WholesaleOrder(
+        WholesaleOrder order = new WholesaleOrder(
             id,
             LocalDate.parse(rs.getString("order_date")),
             OrderStatus.valueOf(rs.getString("status")),
@@ -134,6 +164,8 @@ public class WholesaleOrderRepositoryImpl implements WholesaleOrderRepository {
             rs.getString("courier_ref"),
             ed != null ? LocalDate.parse(ed) : null
         );
+        order.setSaOrderId(rs.getInt("sa_order_id"));
+        return order;
     }
 
     // loads all lines for a given order id

@@ -172,6 +172,11 @@ public class DatabaseManager {
                 )
             """);
 
+            // migration: add sa_order_id column to existing installations
+            // wrapped in try-catch because sqlite throws if the column already exists
+            try { stmt.execute("ALTER TABLE wholesale_orders ADD COLUMN sa_order_id INTEGER NOT NULL DEFAULT 0"); }
+            catch (SQLException ignored) { /* column already present — safe to skip */ }
+
             // seed stock items — prices are bulk cost, markup handled in StockItem.getUnitPrice()
             stmt.execute("""
                 INSERT OR IGNORE INTO stock (id, name, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold) VALUES
