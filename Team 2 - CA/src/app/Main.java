@@ -29,10 +29,6 @@ public class Main extends JFrame {
     public static final int SCREEN_WIDTH = 1280;
     public static final int SCREEN_HEIGHT = 720;
 
-    public Main() {
-        LoginScreen();
-    }
-
     public static void main(String[] args) {
         // use cross-platform L&F so flat colored buttons render correctly on all OS
         try { UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName()); }
@@ -71,7 +67,14 @@ public class Main extends JFrame {
 
         // run account status engine on startup
         new AccountService(new CustomerRepositoryImpl()).updateAccountStatuses();
-        new Main();
+
+
+        JFrame frame = new JFrame("IPOS-CA");
+        frame.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+        Main.LoginScreen(frame);
     }
 
     // =====================================================================
@@ -439,10 +442,9 @@ public class Main extends JFrame {
 
     // =====================================================================
 
-    public static void LoginScreen() {
+    public static void LoginScreen(JFrame frame) {
         LoginService loginService = new LoginService(new UserRepositoryImpl());
 
-        JFrame frame = new JFrame("IPOS-CA");
         frame.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new GridBagLayout());
@@ -489,8 +491,7 @@ public class Main extends JFrame {
             String password = new String(passwordField.getPassword());
             try {
                 User user = loginService.login(username, password);
-                frame.dispose();
-                new Dashboard(user);
+                showDashboard(frame, user);
             } catch (AuthException ex) {
                 errorLabel.setText(ex.getMessage());
             }
@@ -538,6 +539,15 @@ public class Main extends JFrame {
 
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
+    }
+
+    private static void showDashboard(JFrame frame, User user) {
+        frame.setTitle("IPOS-CA — " + user.getRole() + " Dashboard");
+        frame.getContentPane().removeAll();
+        frame.getContentPane().setLayout(new BorderLayout());
+        frame.getContentPane().add(new Dashboard(user), BorderLayout.CENTER);
+        frame.revalidate();
+        frame.repaint();
     }
 
     // dark header section inside the login card
