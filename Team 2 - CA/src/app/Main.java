@@ -3,9 +3,14 @@ package app;
 import exception.AuthException;
 import exception.SaleException;
 import exception.StockException;
+import integration.CaApiServer;
+import integration.HttpSaGateway;
+import integration.IPuStockUpdater;
+import integration.ISaGateway;
 import integration.MockPuAdapter;
 import integration.MockSaGateway;
 import model.*;
+import service.OnlineSaleService;
 import repository.*;
 import service.*;
 import ui.Dashboard;
@@ -32,6 +37,37 @@ public class Main extends JFrame {
         // use cross-platform L&F so flat colored buttons render correctly on all OS
         try { UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName()); }
         catch (Exception ignored) {}
+
+        // wire all shared services — only one instance of each exists for the whole app
+        boolean httpMode = Boolean.getBoolean("ipos.http");
+
+        StockService      stockSvc   = new StockService(new StockRepositoryImpl());
+        OnlineSaleService onlineSvc  = new OnlineSaleService(stockSvc);
+        IPuStockUpdater   puAdapter  = new MockPuAdapter(onlineSvc);
+
+        ISaGateway gateway;
+        if (httpMode) {
+            HttpSaGateway httpGateway = new HttpSaGateway();
+            httpGateway.login();
+            gateway = httpGateway;
+            System.out.println("[Main] HTTP mode — connected to SA on port 8080");
+        } else {
+            gateway = new MockSaGateway();
+            System.out.println("[Main] Mock mode — SA and PU are simulated locally");
+        }
+
+        WholesaleOrderService orderSvc = new WholesaleOrderService(gateway, stockSvc);
+        AppContext.init(orderSvc, onlineSvc, puAdapter, stockSvc);
+
+        if (httpMode) {
+            CaApiServer apiServer = new CaApiServer(
+                orderSvc, puAdapter,
+                AppContext::notifyOrderRefresh,
+                AppContext::notifyStockRefresh
+            );
+            apiServer.start();
+            Runtime.getRuntime().addShutdownHook(new Thread(apiServer::stop, "ca-api-shutdown"));
+        }
 
         // run account status engine on startup
         new AccountService(new CustomerRepositoryImpl()).updateAccountStatuses();
