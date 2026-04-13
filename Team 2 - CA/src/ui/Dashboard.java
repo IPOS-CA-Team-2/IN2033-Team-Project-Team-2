@@ -78,13 +78,13 @@ public class Dashboard extends JPanel {
     }
 
     // builds a centered column of menu buttons with consistent styling
+    // builds a centered column of menu buttons with consistent styling
     private void buildAdminMenu(JTabbedPane tabs) {
         tabs.addTab("Manage Staff Users", new StaffManagementUI());
         tabs.addTab("View Stock", new StockManagementUI());
         tabs.addTab("View Reports", new ReportsUI(currentUser, 0));
         tabs.addTab("Customer Accounts", new CustomerAccountUI(currentUser));
-
-
+        tabs.addTab("Templates", new TemplatesUI());
     }
 
     private void buildPharmacistMenu(JTabbedPane tabs) {
@@ -102,8 +102,7 @@ public class Dashboard extends JPanel {
         tabs.addTab("View Reports", new ReportsUI(currentUser, 0));
         tabs.addTab("Customer Accounts", new CustomerAccountUI(currentUser));
         tabs.addTab("Place Wholesale Order", new WholesaleOrderUI(currentUser));
-        tabs.addTab("Maintain Local Stock", new StockManagementUI());
-        tabs.addTab("Wholesale Orders", new WholesaleOrderUI(currentUser));
+        tabs.addTab("Templates", new TemplatesUI());
 
     }
 }
