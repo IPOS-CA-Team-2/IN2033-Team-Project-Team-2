@@ -57,8 +57,10 @@ public class Receipt {
 
         // address block — customer left, pharmacy right
         String[] custLines = customerAddress != null ? customerAddress.split(",") : new String[]{};
-        String[] pharmLines = {PharmacyConfig.getName(), PharmacyConfig.getAddress(), PharmacyConfig.getCity(),
-                               PharmacyConfig.getPostcode(), PharmacyConfig.getPhone(), PharmacyConfig.getFax()};
+
+        repository.ConfigRepository cfg = new repository.ConfigRepository(); // replaced with template text so everythign is modifiable
+        String[] pharmLines = {cfg.get("pharmacy_name"), cfg.get("pharmacy_address"),
+                cfg.get("pharmacy_phone"), cfg.get("pharmacy_email")};
 
         sb.append(String.format("%-40s%s%n", customerName, pharmLines[0]));
         for (int i = 0; i < Math.max(custLines.length, pharmLines.length - 1); i++) {
@@ -101,7 +103,7 @@ public class Receipt {
         }
         sb.append(String.format("%48s %-10s %.2f%n", "", "Amount Due", sale.getTotalIncVat()));
 
-        sb.append("\n\nThank you for your valued custom. We look forward to receiving your payment in due course.\n");
+        sb.append("\n\n").append(new repository.ConfigRepository().get("receipt_footer")).append("\n"); // replaced with template
         sb.append("\n\nYours sincerely,\n\n\n\n");
         sb.append(cashierName).append("\n");
 
@@ -114,7 +116,7 @@ public class Receipt {
         StringBuilder sb = new StringBuilder();
 
         sb.append("========================================\n");
-        sb.append("        ").append(PharmacyConfig.getName().toUpperCase()).append("\n");
+        sb.append("        ").append(new repository.ConfigRepository().get("pharmacy_name").toUpperCase()).append("\n");
         sb.append("========================================\n");
         sb.append("Receipt No: ").append(receiptNumber).append("\n");
         sb.append("Date:       ").append(issuedAt.format(fmt)).append("\n");
@@ -144,7 +146,7 @@ public class Receipt {
 
         sb.append(String.format("%-28s %8.2f%n", "TOTAL:", sale.getTotalIncVat()));
         sb.append("========================================\n");
-        sb.append("  Thank you for your valued custom.\n");
+        sb.append("  ").append(new repository.ConfigRepository().get("receipt_footer")).append("\n"); // replaced with template
         sb.append("========================================\n");
 
         return sb.toString();

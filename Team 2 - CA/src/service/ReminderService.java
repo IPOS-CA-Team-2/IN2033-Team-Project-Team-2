@@ -1,6 +1,7 @@
 package service;
 
 import model.*;
+import repository.ConfigRepository;
 import repository.CustomerRepository;
 
 import java.time.LocalDate;
@@ -92,64 +93,31 @@ public class ReminderService {
         );
     }
 
-    // builds the reminder letter text per appendix 6 layout
-    // payment due date is always set to current date + 7 days per brief spec
+    // changed this method to use the templates provided/made in the ui
+
     private String formatLetter(Customer customer, Reminder.Type type, LocalDate date) {
-        StringBuilder sb = new StringBuilder();
-        String line = "─".repeat(60);
+        ConfigRepository configRepo = new ConfigRepository();
         LocalDate paymentDue = date.plusDays(7);
+        String line = "─".repeat(60);
 
-        // sender block
-        sb.append(PharmacyConfig.getName()).append("\n");
-        sb.append(PharmacyConfig.getAddress()).append("\n");
-        sb.append(PharmacyConfig.getCity()).append(" ").append(PharmacyConfig.getPostcode()).append("\n");
-        sb.append(PharmacyConfig.getPhone()).append("\n");
-        if (PharmacyConfig.getFax() != null && !PharmacyConfig.getFax().isBlank()) {
-            sb.append(PharmacyConfig.getFax()).append("\n");
-        }
-        sb.append("\n");
+        // pick the right template
+        String template = type == Reminder.Type.FIRST
+                ? configRepo.get("reminder1_template")
+                : configRepo.get("reminder2_template");
 
-        // date and recipient
-        sb.append(date.format(DATE_FMT)).append("\n\n");
-        sb.append(customer.getName()).append("\n");
-        if (customer.getAddress() != null && !customer.getAddress().isBlank()) {
-            sb.append(customer.getAddress()).append("\n");
-        }
-        sb.append("\n");
+        // replace all placeholders
+        String letter = template
+                .replace("{customer_name}", customer.getName())
+                .replace("{account_no}",    customer.getAccountNumber())
+                .replace("{amount}",        String.format("%.2f", customer.getCurrentBalance()))
+                .replace("{pharmacy_name}", configRepo.get("pharmacy_name"))
+                .replace("{pharmacy_address}", configRepo.get("pharmacy_address"))
+                .replace("{pharmacy_email}", configRepo.get("pharmacy_email"))
+                .replace("{pharmacy_phone}", configRepo.get("pharmacy_phone"))
+                .replace("{date}",          date.format(DATE_FMT))
+                .replace("{payment_due}",   paymentDue.format(DATE_FMT))
+                .replace("{line}",          line);
 
-        // subject line
-        String ordinal = type == Reminder.Type.FIRST ? "First" : "Second";
-        sb.append(line).append("\n");
-        sb.append("Re: Account ").append(customer.getAccountNumber())
-          .append(" — ").append(ordinal).append(" Payment Reminder\n");
-        sb.append(line).append("\n\n");
-
-        sb.append("Dear ").append(customer.getName()).append(",\n\n");
-
-        if (type == Reminder.Type.FIRST) {
-            sb.append("We write to inform you that your account (").append(customer.getAccountNumber())
-              .append(") has an outstanding balance of £")
-              .append(String.format("%.2f", customer.getCurrentBalance())).append(".\n\n");
-            sb.append("As this balance has not been settled by the agreed date, your account has ")
-              .append("been suspended. Please remit the full amount by ")
-              .append(paymentDue.format(DATE_FMT))
-              .append(" to restore normal account access.\n\n");
-            sb.append("If payment has already been made, please disregard this notice.\n\n");
-        } else {
-            sb.append("We write to draw your urgent attention to the outstanding balance of £")
-              .append(String.format("%.2f", customer.getCurrentBalance()))
-              .append(" on your account (").append(customer.getAccountNumber()).append(").\n\n");
-            sb.append("Despite our previous reminder, this balance remains unpaid. ")
-              .append("Please remit payment in full by ")
-              .append(paymentDue.format(DATE_FMT))
-              .append(". Failure to do so will result in your account being referred for further action.\n\n");
-            sb.append("We strongly urge you to contact us immediately to arrange payment.\n\n");
-        }
-
-        sb.append("Yours sincerely,\n\n");
-        sb.append(PharmacyConfig.getName()).append("\n");
-        sb.append(line);
-
-        return sb.toString();
+        return letter;
     }
 }
