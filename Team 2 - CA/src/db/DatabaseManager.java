@@ -186,6 +186,23 @@ public class DatabaseManager {
                     (4, 'Cetirizine 10mg',      60, 3.45, 0.30, 0.00, 10),
                     (5, 'Omeprazole 20mg',       5, 5.38, 0.30, 0.00, 10)
             """);
+
+            // database for the templates
+            stmt.execute("""
+            CREATE TABLE IF NOT EXISTS config (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL)
+            """);
+
+            // add defaults
+            stmt.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('pharmacy_name', 'Big Pharma')");
+            stmt.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('pharmacy_address', '117 Stratfield Road, Borehamwood, Hertfordshire, United Kingdom wd6 1ud')");
+            stmt.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('pharmacy_email', 'support@bigpharma.co.uk')");
+            stmt.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('pharmacy_phone', '07427380800')");
+            stmt.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('reminder1_template', 'Dear {customer_name},\n\nREMINDER\nAccount: {account_no} | Amount: £{amount}\n\nAccording to our records we have not received your payment. Please remit by {payment_due}.\n\nYours sincerely,\n{pharmacy_name}')");
+            stmt.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('reminder2_template', 'Dear {customer_name},\n\nSECOND REMINDER\nAccount: {account_no} | Amount: £{amount}\n\nDespite our previous reminder this balance remains unpaid. Please remit by {payment_due}.\n\nYours sincerely,\n{pharmacy_name}')");
+            stmt.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('receipt_footer', 'Thank you for your purchase')");
+
         }
     }
 }
