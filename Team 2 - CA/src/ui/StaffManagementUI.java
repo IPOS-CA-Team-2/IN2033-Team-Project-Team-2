@@ -150,8 +150,22 @@ public class StaffManagementUI extends JPanel {
         addBtn.addActionListener(e -> showAddUserDialog());
         removeBtn.addActionListener(e -> removeSelectedUser());
 
+
+        // promote and demote buttons for staff
+        JButton promoteBtn = UITheme.successBtn("Promote");
+        JButton demoteBtn  = UITheme.dangerBtn("Demote");
+
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         btnRow.setOpaque(false);
+        btnRow.add(removeBtn);
+        btnRow.add(addBtn);
+
+        // true -> promote, false -> demote
+        promoteBtn.addActionListener(e -> handleRoleChange(true));
+        demoteBtn.addActionListener(e -> handleRoleChange(false));
+
+        btnRow.add(demoteBtn);
+        btnRow.add(promoteBtn);
         btnRow.add(removeBtn);
         btnRow.add(addBtn);
 
@@ -167,6 +181,80 @@ public class StaffManagementUI extends JPanel {
         footer.add(btnRow, BorderLayout.EAST);
         return footer;
     }
+
+
+    private void handleRoleChange(boolean promote) {
+        // takes in a bool so.. , true -> promote, false -> demote
+
+        // must select user by clicking first
+        int viewRow = table.getSelectedRow();
+        if (viewRow < 0) {
+            showError("Please select a user first.");
+            return;
+        }
+
+        int modelRow = table.convertRowIndexToModel(viewRow);
+        int id = (int) tableModel.getValueAt(modelRow, 0);
+        String username = (String) tableModel.getValueAt(modelRow, 2);
+        String role = (String) tableModel.getValueAt(modelRow, 4);
+
+        // role order: pharma -> manager -> admin
+        String newRole;
+        if (promote) {
+            switch (role) {
+                case "Pharmacist":
+                    newRole = "Manager";
+                    break;
+                case "Manager":
+                    newRole = "Admin";
+                    break;
+                default:
+                    JOptionPane.showMessageDialog(this,
+                            username + " is already assigned the highest role",
+                            "cannot promote further", JOptionPane.WARNING_MESSAGE);
+                    return;
+            }
+        }
+        else {
+            switch (role) {
+                case "Admin":
+                    newRole = "Manager";
+                    break;
+                case "Manager":
+                    newRole = "Pharmacist";
+                    break;
+                default:
+                    JOptionPane.showMessageDialog(this,
+                            username + " is already assigned the lowest role",
+                            "cannot demote further", JOptionPane.WARNING_MESSAGE);
+                    return;
+            }
+        }
+
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "do you want to change " + username + "'s role from " + role + " to " + newRole + "?",
+                "confirm", JOptionPane.YES_NO_OPTION);
+
+        if (confirm != JOptionPane.YES_OPTION) { // cancelled change exit out
+            return;
+        };
+
+        // db change
+        String sql = "UPDATE users SET role = ? WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, newRole);
+            stmt.setInt(2, id);
+            stmt.executeUpdate();
+            loadUsers();
+        } catch (SQLException ex) {
+            showError("error changing role: " + ex.getMessage());
+        }
+    }
+
+
+
+
 
     private void loadUsers() {
         tableModel.setRowCount(0);
