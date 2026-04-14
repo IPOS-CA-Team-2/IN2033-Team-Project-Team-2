@@ -8,6 +8,7 @@ import service.WholesaleOrderService;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -54,8 +55,95 @@ public class WholesaleOrderUI extends JPanel {
     }
 
     private JPanel buildHeader() {
-        return UITheme.createHeaderPanel("Wholesale Orders — InfoPharma (SA)");
+        // adds search bar on the right of the top bar
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(UITheme.DARK_HEADER);
+        header.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
+
+
+        // adds management text on the left of the top bar
+        // add a filler cause it looks empty without it
+        JLabel titleLabel = new JLabel("Wholesale Orders — InfoPharma (SA)");
+        titleLabel.setFont(UITheme.FONT_TITLE);
+        titleLabel.setForeground(Color.WHITE);
+
+
+
+        // adds search bar on the right of the top bar
+        JLabel searchLabel = new JLabel("Search: ");
+        searchLabel.setFont(UITheme.FONT_BOLD);
+        searchLabel.setForeground(Color.WHITE);
+
+
+
+        JTextField searchField = new JTextField(18);
+        UITheme.styleTextField(searchField);
+
+        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate (javax.swing.event.DocumentEvent e) {
+                filterTable(searchField.getText());
+            }
+
+            public void removeUpdate (javax.swing.event.DocumentEvent e) {
+                filterTable(searchField.getText());
+            }
+
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                filterTable(searchField.getText());
+            }
+        });
+
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        searchPanel.setOpaque(false);
+        searchPanel.add(searchLabel);
+        searchPanel.add(searchField);
+
+
+        header.add(searchPanel, BorderLayout.EAST);
+        header.add(titleLabel, BorderLayout.WEST);
+
+        return header;
+
     }
+
+    private void filterTable(String query) {
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
+        orderTable.setRowSorter(sorter);
+
+        if (query.isBlank()) {
+            sorter.setRowFilter(null);
+        }
+        else {
+            String searchQuery = query.toLowerCase(); // convert to lowercasse
+            int queryLength = searchQuery.length();
+            // if equals to anything on first  or second column
+            if (query.toLowerCase().startsWith("orderid: ") && queryLength > 9) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(9).trim(), 0));
+            }
+            else if (query.toLowerCase().startsWith("date: ") && queryLength > 6) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(6).trim(), 1));
+            }
+            else if (query.toLowerCase().startsWith("status: ") && queryLength > 8) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(8).trim(), 2));
+            }
+            else if (query.toLowerCase().startsWith("items: ") && queryLength > 7) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(7).trim(), 3));
+            }
+            else if (query.toLowerCase().startsWith("total: ") && queryLength > 7) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(7).trim(), 4));
+            }
+            else if (query.toLowerCase().startsWith("delivery: ") && queryLength > 10) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(10).trim(), 5));
+            }
+            else if (query.toLowerCase().startsWith("courier: ") && queryLength > 9) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(9).trim(), 6));
+            }
+            else {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery, 0, 1, 2, 3,4,5,6)); // search by orderID, date, status, items, price
+            }
+        }
+    }
+
 
     private JPanel buildTablePanel() {
         String[] cols = {"Order ID", "Date", "Status", "Items", "Total (£)", "Expected Delivery", "Courier"};
@@ -132,11 +220,17 @@ public class WholesaleOrderUI extends JPanel {
         puSimBtn.addActionListener(e -> handleSimulatePuSale());
         refreshBtn.addActionListener(e -> loadOrders());
 
+        JLabel searchFilters = new JLabel("command followed by  \": \"        |        Search commands: orderid, date, status, items, total, delivery");
+        searchFilters.setFont(UITheme.FONT_SMALL);
+        searchFilters.setForeground(UITheme.SECONDARY);
+
+
         panel.add(placeBtn);
         panel.add(deliveredBtn);
         panel.add(statusBtn);
         panel.add(puSimBtn);
         panel.add(refreshBtn);
+        panel.add(searchFilters);
 
         return panel;
     }
