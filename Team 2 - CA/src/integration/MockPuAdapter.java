@@ -4,6 +4,7 @@ import db.DatabaseManager;
 import model.OnlineSale;
 import model.OnlineSaleItem;
 import service.OnlineSaleService;
+import model.CardDetails;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -39,6 +40,18 @@ public class MockPuAdapter implements IPuStockUpdater {
         String fakeOrderId = "PU-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         OnlineSale sale = new OnlineSale(fakeOrderId, LocalDate.now(), customerEmail, items);
         return applyOnlineSale(sale);
+    }
+
+    @Override
+    public CardClearanceResult clearCardPayment(CardDetails card, double amount) {
+        // simulate pu payment processor clearance
+        // in real integration this calls pu's payment endpoint
+        // first four "0000" simulates a declined card for demo purposes
+        if ("0000".equals(card.getFirstFourDigits())) {
+            return new CardClearanceResult(false, null, "Card declined by payment processor");
+        }
+        String txRef = "PU-TX-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return new CardClearanceResult(true, txRef, "Payment approved");
     }
 
     // log the incoming sale to the online_sales and online_sale_items tables

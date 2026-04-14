@@ -1,11 +1,14 @@
 package ui;
 
 import exception.SaleException;
+import integration.IPuStockUpdater;
 import model.*;
 import repository.*;
 import service.AccountService;
 import service.SaleService;
 import service.StockService;
+import app.AppContext;
+import integration.CardClearanceResult;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -392,6 +395,24 @@ public class ProcessSaleUI extends JPanel {
             }
             try { cardDetails = new CardDetails(type, first, last, expiry); }
             catch (IllegalArgumentException e) { JOptionPane.showMessageDialog(this, e.getMessage(), "Invalid Card Details", JOptionPane.ERROR_MESSAGE); return; }
+        }
+        // card payments must be cleared via the PU payment processor
+        if (cardDetails != null) {
+            double saleTotal = basketLines.stream().mapToDouble(SaleLine::getLineTotalIncVat).sum();
+            saleTotal = saleTotal - (saleTotal * discountPercent);
+            IPuStockUpdater pu = AppContext.getPuAdapter();
+            if (pu != null) {
+                CardClearanceResult clearance = pu.clearCardPayment(cardDetails, saleTotal);
+                if (!clearance.isApproved()) {
+                    JOptionPane.showMessageDialog(this,
+                            "Card payment declined by PU payment processor.\n" + clearance.getMessage(),
+                            "Payment Declined", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                JOptionPane.showMessageDialog(this,
+                        "Card payment approved via PU.\nTransaction ref: " + clearance.getTransactionRef(),
+                        "Payment Authorised", JOptionPane.INFORMATION_MESSAGE);
+            }
         }
 
         // account holders cannot pay cash per brief spec
