@@ -1,5 +1,6 @@
 package integration;
 
+import app.AppContext;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -10,6 +11,7 @@ import com.sun.net.httpserver.HttpServer;
 import model.OnlineSale;
 import model.OnlineSaleItem;
 import model.OrderStatus;
+import model.StockItem;
 import service.WholesaleOrderService;
 
 import javax.swing.SwingUtilities;
@@ -56,13 +58,14 @@ public class CaApiServer {
             server = HttpServer.create(new InetSocketAddress(8081), 0);
             server.createContext("/order-update", this::handleOrderUpdate);
             server.createContext("/online-sale",  this::handleOnlineSale);
+            server.createContext("/stock",        this::handleGetStock);
             server.setExecutor(Executors.newSingleThreadExecutor(r -> {
                 Thread t = new Thread(r, "ca-api-server");
                 t.setDaemon(true);
                 return t;
             }));
             server.start();
-            System.out.println("[CaApiServer] Listening on port 8081 (/order-update, /online-sale)");
+            System.out.println("[CaApiServer] Listening on port 8081 (/order-update, /online-sale, /stock)");
         } catch (BindException e) {
             System.err.println("[CaApiServer] Port 8081 already in use — running without inbound server");
         } catch (IOException e) {
@@ -108,10 +111,11 @@ public class CaApiServer {
             return;
         }
         try {
-            JsonObject json        = JsonParser.parseString(readBody(exchange)).getAsJsonObject();
-            String     puOrderId   = json.get("puOrderId").getAsString();
-            LocalDate  received    = LocalDate.parse(json.get("receivedDate").getAsString());
-            String     email       = json.has("customerEmail") ? json.get("customerEmail").getAsString() : null;
+            JsonObject json           = JsonParser.parseString(readBody(exchange)).getAsJsonObject();
+            String     puOrderId      = json.get("puOrderId").getAsString();
+            LocalDate  received       = LocalDate.parse(json.get("receivedDate").getAsString());
+            String     email          = json.has("customerEmail")   ? json.get("customerEmail").getAsString()   : null;
+            String     deliveryAddress = json.has("deliveryAddress") ? json.get("deliveryAddress").getAsString() : "";
 
             List<OnlineSaleItem> items = new ArrayList<>();
             for (JsonElement el : json.getAsJsonArray("items")) {
@@ -119,7 +123,7 @@ public class CaApiServer {
                 items.add(new OnlineSaleItem(obj.get("itemId").getAsInt(), obj.get("quantity").getAsInt()));
             }
 
-            OnlineSale sale         = new OnlineSale(puOrderId, received, email, items);
+            OnlineSale sale         = new OnlineSale(puOrderId, received, email, deliveryAddress, items);
             boolean    fullyApplied = puAdapter.applyOnlineSale(sale);
 
             SwingUtilities.invokeLater(onStockChanged);
@@ -127,6 +131,34 @@ public class CaApiServer {
         } catch (Exception e) {
             System.err.println("[CaApiServer] /online-sale error: " + e.getMessage());
             sendJson(exchange, 400, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    // GET /stock — PU calls this on catalogue load to get CA's full product list with prices
+    // returns a JSON array: [{"id":1,"name":"...","quantity":5,"price":2.00,"itemCode":"100 00001"},...]
+    private void handleGetStock(HttpExchange exchange) throws IOException {
+        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+            exchange.sendResponseHeaders(405, -1);
+            return;
+        }
+        try {
+            java.util.List<StockItem> items = AppContext.getStockService().getAllStock();
+            StringBuilder sb = new StringBuilder("[");
+            for (int i = 0; i < items.size(); i++) {
+                StockItem item = items.get(i);
+                if (i > 0) sb.append(",");
+                sb.append("{\"id\":").append(item.getItemId())
+                  .append(",\"name\":\"").append(item.getName().replace("\"", "\\\"")).append("\"")
+                  .append(",\"quantity\":").append(item.getQuantity())
+                  .append(",\"price\":").append(String.format("%.2f", item.getPriceIncVat()))
+                  .append(",\"itemCode\":\"").append(item.getItemCode().replace("\"", "\\\"")).append("\"")
+                  .append("}");
+            }
+            sb.append("]");
+            sendJson(exchange, 200, sb.toString());
+        } catch (Exception e) {
+            System.err.println("[CaApiServer] /stock error: " + e.getMessage());
+            sendJson(exchange, 500, "{\"error\":\"" + e.getMessage() + "\"}");
         }
     }
 

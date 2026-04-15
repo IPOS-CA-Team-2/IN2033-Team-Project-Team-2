@@ -4,6 +4,7 @@ import exception.AuthException;
 import exception.SaleException;
 import exception.StockException;
 import integration.CaApiServer;
+import integration.HttpPuAdapter;
 import integration.HttpSaGateway;
 import integration.IPuStockUpdater;
 import integration.ISaGateway;
@@ -37,18 +38,20 @@ public class Main extends JFrame {
         // wire all shared services — only one instance of each exists for the whole app
         boolean httpMode = Boolean.getBoolean("ipos.http");
 
-        StockService      stockSvc   = new StockService(new StockRepositoryImpl());
-        OnlineSaleService onlineSvc  = new OnlineSaleService(stockSvc);
-        IPuStockUpdater   puAdapter  = new MockPuAdapter(onlineSvc);
+        StockService      stockSvc  = new StockService(new StockRepositoryImpl());
+        OnlineSaleService onlineSvc = new OnlineSaleService(stockSvc);
 
         ISaGateway gateway;
+        IPuStockUpdater puAdapter;
         if (httpMode) {
             HttpSaGateway httpGateway = new HttpSaGateway();
             httpGateway.login();
-            gateway = httpGateway;
-            System.out.println("[Main] HTTP mode — connected to SA on port 8080");
+            gateway   = httpGateway;
+            puAdapter = new HttpPuAdapter(onlineSvc);
+            System.out.println("[Main] HTTP mode — connected to SA on port 8080, PU on port 8082");
         } else {
-            gateway = new MockSaGateway();
+            gateway   = new MockSaGateway();
+            puAdapter = new MockPuAdapter(onlineSvc);
             System.out.println("[Main] Mock mode — SA and PU are simulated locally");
         }
 
