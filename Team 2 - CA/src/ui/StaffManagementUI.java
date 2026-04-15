@@ -23,6 +23,7 @@ public class StaffManagementUI extends JPanel {
         add(mainSection(), BorderLayout.CENTER);
         add(bottomSection(), BorderLayout.SOUTH);
         loadUsers();
+        hidePassword(); // hide paswords by deauglt
     }
 
     private JPanel topSection() {
@@ -229,13 +230,13 @@ public class StaffManagementUI extends JPanel {
                 }
             });
         } else {
-            hide();
+            hidePassword();
         }
 
         table.repaint();
     }
 
-    public void hide() {
+    public void hidePassword() {
         // put it in a seperate one cause it was causing issues and not triggering at the start for some reason idk why
         //check column three again which is the pasword one
         table.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {

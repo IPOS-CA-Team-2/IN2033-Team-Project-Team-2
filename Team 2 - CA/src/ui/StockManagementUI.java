@@ -12,6 +12,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.util.List;
+import java.sql.*;
 
 // stock management screen — view all stock, update quantities, add/remove items
 // accessible by pharmacist and admin from the dashboard
@@ -202,18 +203,21 @@ public class StockManagementUI extends JPanel {
         JButton decreaseBtn  = UITheme.primaryBtn("Decrease Stock");
         JButton addItemBtn   = UITheme.successBtn("Add New Item");
         JButton removeItemBtn = UITheme.dangerBtn("Remove Item");
+        JButton editBtn = UITheme.primaryBtn("Edit Details"); // add button to edit vat and shit
         JButton refreshBtn   = UITheme.secondaryBtn("Refresh");
 
         increaseBtn.addActionListener(e -> handleAdjustStock(true));
         decreaseBtn.addActionListener(e -> handleAdjustStock(false));
         addItemBtn.addActionListener(e -> handleAddItem());
         removeItemBtn.addActionListener(e -> handleRemoveItem());
+        editBtn.addActionListener(e -> editBtn());
         refreshBtn.addActionListener(e -> loadStockData());
 
 
         panel.add(decreaseBtn);
         panel.add(addItemBtn);
         panel.add(removeItemBtn);
+        panel.add(editBtn); // add edit button
         panel.add(refreshBtn);
 
         JLabel searchFilters = new JLabel("command followed by  \": \"        |        Search commands: id, name, quantity, cost, markup, price, vat, threshold, status");
@@ -223,6 +227,91 @@ public class StockManagementUI extends JPanel {
 
         return panel;
     }
+
+
+    private void editBtn() {
+        int selectedRow = stockTable.getSelectedRow();
+        if (selectedRow < 0) { // no row selected
+            JOptionPane.showMessageDialog(this, "Please select a stock item first", "No selection", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int modelRow = stockTable.convertRowIndexToModel(selectedRow);
+        int itemId = (int) tableModel.getValueAt(modelRow, COL_ID);
+        String name = (String) tableModel.getValueAt(modelRow, COL_NAME);
+
+        // pre-fill fields with current values
+        JTextField nameField = new JTextField((String) tableModel.getValueAt(modelRow, COL_NAME));
+        JTextField markupField = new JTextField(tableModel.getValueAt(modelRow, COL_MARKUP).toString().replace("%", ""));
+        JTextField bulkCostField = new JTextField(tableModel.getValueAt(modelRow, COL_BULK_COST).toString());
+        JTextField vatField = new JTextField(tableModel.getValueAt(modelRow, COL_VAT).toString().replace("%", ""));
+        JTextField thresholdField = new JTextField(tableModel.getValueAt(modelRow, COL_THRESHOLD).toString());
+
+        // unit price calculated from markup x bulk price
+
+        JTextField unitPriceField = new JTextField(tableModel.getValueAt(modelRow, COL_PRICE).toString());
+        unitPriceField.setEditable(false); // cannot be edited
+        unitPriceField.setBackground(UITheme.ROW_ALT);
+
+        UITheme.styleTextField(nameField);
+        UITheme.styleTextField(markupField);
+        UITheme.styleTextField(bulkCostField);
+        UITheme.styleTextField(vatField);
+        UITheme.styleTextField(thresholdField);
+        UITheme.styleTextField(unitPriceField);
+
+        Object[] fields = {
+                "Item Name:", nameField,
+                "Bulk Cost:", bulkCostField,
+                "Markup Rate:", markupField,
+                "Unit Price: (Bulk Cost + Markup)", unitPriceField,
+                "VAT Rate:", vatField,
+                "Low Stock Threshold:", thresholdField
+        };
+
+        int result = JOptionPane.showConfirmDialog(this, fields,
+                "Edit Stock Item — " + name, JOptionPane.OK_CANCEL_OPTION);
+        if (result != JOptionPane.OK_OPTION) return;
+
+        try {
+            String newName = nameField.getText().trim();
+            double bulkCost = Double.parseDouble(bulkCostField.getText().trim());
+            double markup = Double.parseDouble(markupField.getText().trim()) / 100.0;
+            double vat = Double.parseDouble(vatField.getText().trim()) / 100.0;
+            int threshold = Integer.parseInt(thresholdField.getText().trim());
+
+            if (newName.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Name cannot be blank", "Blank input", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            updateStockItem(itemId, newName, bulkCost, markup, vat, threshold);
+            loadStockData();
+            JOptionPane.showMessageDialog(this, name + " updated successfully", "Updated", JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Please check your inputs, numbers only for cost, markup, VAT and threshold", "Invalid Input", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public void updateStockItem(int itemId, String name, double bulkCost, double markup, double vat, int threshold) {
+        String sql = "UPDATE stock SET name = ?, bulk_cost = ?, markup_rate = ?, vat_rate = ?, low_stock_threshold = ? WHERE id = ?";
+        try (Connection conn = db.DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, name);
+            stmt.setDouble(2, bulkCost);
+            stmt.setDouble(3, markup);
+            stmt.setDouble(4, vat);
+            stmt.setInt(5, threshold);
+            stmt.setInt(6, itemId);
+            stmt.executeUpdate();
+        } catch (java.sql.SQLException ex) {
+            throw new RuntimeException("failed to update stock item: " + ex.getMessage());
+        }
+    }
+
+
+
 
     // pull fresh data from the db and repopulate the table
     private void loadStockData() {
