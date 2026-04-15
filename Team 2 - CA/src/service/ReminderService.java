@@ -120,4 +120,50 @@ public class ReminderService {
 
         return letter;
     }
+    public List<String[]> generateMonthlyStatements() {
+        List<String[]> statements = new ArrayList<>();
+        List<Customer> customers = customerRepository.findAll();
+        LocalDate today = LocalDate.now();
+
+        for (Customer c : customers) {
+            if (c.getCurrentBalance() > 0) {
+                statements.add(new String[]{ c.getName(), formatStatement(c, today) });
+            }
+        }
+        return statements;
+    }
+
+    private String formatStatement(Customer customer, LocalDate date) {
+        ConfigRepository configRepo = new ConfigRepository();
+        String line = "─".repeat(60);
+        String prevMonth = date.minusMonths(1).format(DateTimeFormatter.ofPattern("MMMM yyyy"));
+        LocalDate dueDate = date.withDayOfMonth(15);
+        if (date.getDayOfMonth() > 15) {
+            dueDate = date.plusMonths(1).withDayOfMonth(15);
+        }
+
+        String address = customer.getAddress() != null && !customer.getAddress().isBlank()
+                ? customer.getAddress() + "\n" : "";
+
+        return line + "\n"
+                + configRepo.get("pharmacy_name") + "\n"
+                + configRepo.get("pharmacy_address") + "\n"
+                + configRepo.get("pharmacy_phone") + "\n"
+                + configRepo.get("pharmacy_email") + "\n"
+                + line + "\n\n"
+                + "Date: " + date.format(DATE_FMT) + "\n\n"
+                + customer.getName() + "\n"
+                + address
+                + "\nAccount Number: " + customer.getAccountNumber() + "\n\n"
+                + "MONTHLY STATEMENT\n"
+                + line + "\n\n"
+                + "Dear " + customer.getName() + ",\n\n"
+                + "This is your monthly statement for purchases made in " + prevMonth + ".\n\n"
+                + "Your outstanding balance is:  £" + String.format("%.2f", customer.getCurrentBalance()) + "\n\n"
+                + "Please pay the full amount by " + dueDate.format(DATE_FMT) + ".\n\n"
+                + "Payment can be made by credit or debit card in store.\n\n"
+                + "Yours sincerely,\n\n"
+                + configRepo.get("pharmacy_name") + "\n"
+                + line;
+    }
 }

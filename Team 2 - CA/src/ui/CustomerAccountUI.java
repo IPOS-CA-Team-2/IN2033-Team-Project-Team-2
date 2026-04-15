@@ -244,13 +244,16 @@ public class CustomerAccountUI extends JPanel {
 
         if ("Manager".equals(currentUser.getRole())) {
             JButton generateBtn = UITheme.primaryBtn("Generate Reminders");
+            JButton statementsBtn = UITheme.primaryBtn("Generate Statements");
             restoreBtn = UITheme.dangerBtn("Restore Account");
             restoreBtn.setEnabled(false);
 
             generateBtn.addActionListener(e -> handleGenerateReminders());
+            statementsBtn.addActionListener(e -> handleGenerateStatements());
             restoreBtn.addActionListener(e -> handleRestoreAccount());
 
             panel.add(generateBtn);
+            panel.add(statementsBtn);
             panel.add(restoreBtn);
         }
 
@@ -491,6 +494,32 @@ public class CustomerAccountUI extends JPanel {
                 "Account Restored", JOptionPane.INFORMATION_MESSAGE);
         } else {
             JOptionPane.showMessageDialog(this, "Failed to restore account.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    private void handleGenerateStatements() {
+        List<String[]> statements = reminderService.generateMonthlyStatements();
+
+        if (statements.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No customers have an outstanding balance. No statements to generate.",
+                    "Generate Statements", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        int view = JOptionPane.showConfirmDialog(this,
+                statements.size() + " statement(s) ready for customers with outstanding balances.\n\nView them now?",
+                "Statements Generated", JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE);
+
+        if (view == JOptionPane.YES_OPTION) {
+            for (String[] entry : statements) {
+                JTextArea area = new JTextArea(entry[1]);
+                area.setFont(new Font("Monospaced", Font.PLAIN, 12));
+                area.setEditable(false);
+                area.setColumns(60);
+                area.setRows(25);
+                JOptionPane.showMessageDialog(this, new JScrollPane(area),
+                        "Monthly Statement — " + entry[0], JOptionPane.PLAIN_MESSAGE);
+            }
         }
     }
 }
