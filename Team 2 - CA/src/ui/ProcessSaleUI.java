@@ -405,12 +405,12 @@ public class ProcessSaleUI extends JPanel {
                 CardClearanceResult clearance = pu.clearCardPayment(cardDetails, saleTotal);
                 if (!clearance.isApproved()) {
                     JOptionPane.showMessageDialog(this,
-                            "Card payment declined by PU payment processor.\n" + clearance.getMessage(),
+                            "Card payment. \n" + clearance.getMessage(),
                             "Payment Declined", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
                 JOptionPane.showMessageDialog(this,
-                        "Card payment approved via PU.\nTransaction ref: " + clearance.getTransactionRef(),
+                        "Card payment approved.\nTransaction ref: " + clearance.getTransactionRef(),
                         "Payment Authorised", JOptionPane.INFORMATION_MESSAGE);
             }
         }
