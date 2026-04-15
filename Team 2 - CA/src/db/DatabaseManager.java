@@ -62,9 +62,10 @@ public class DatabaseManager {
 
             stmt.execute("""
                 INSERT OR IGNORE INTO users (username, password, role, name) VALUES
-                    ('admin1',   'pass123', 'Admin',       'Alice'),
-                    ('pharma1',  'pass456', 'Pharmacist',  'Bob'),
-                    ('manager1', 'pass789', 'Manager',     'Carol')
+                    ('sysdba',     'masterkey',   'Admin',       'System Administrator'),
+                    ('manager',    'Get_it_done', 'Manager',     'Director of Operations'),
+                    ('accountant', 'Count_money', 'Pharmacist',  'Senior Accountant'),
+                    ('clerk',      'Paperwork',   'Pharmacist',  'Accountant')
             """);
 
             // stock table — bulk_cost is what we pay infopharma, markup_rate is our retail margin
