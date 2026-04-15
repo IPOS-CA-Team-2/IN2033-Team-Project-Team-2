@@ -12,6 +12,7 @@ public class StaffManagementUI extends JPanel {
     private static final String[] COLUMNS = {"ID", "Name", "Username", "Password", "Role"};
     private DefaultTableModel tableModel;
     private JTable table;
+    private boolean passwordsVisible = false; // password toggle defaulted to false
 
     public StaffManagementUI() {
         setLayout(new BorderLayout());
@@ -80,12 +81,29 @@ public class StaffManagementUI extends JPanel {
     private void filterTable(String query) {
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
         table.setRowSorter(sorter);
-        if (query == null || query.isBlank()) {
+
+        if (query.isBlank()) {
             sorter.setRowFilter(null);
-        } else {
-            // if query equals to anything found on first, second and fourth column
-            // third column isnt required as its the password
-            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + query, 1, 2, 4));
+        }
+        else {
+            String searchQuery = query.toLowerCase(); // convert to lowercasse
+            int queryLength = searchQuery.length();
+            // if equals to anything on first  or second column
+            if (query.toLowerCase().startsWith("name: ") && queryLength > 6) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(6).trim(), 0));
+            }
+            else if (query.toLowerCase().startsWith("username: ") && queryLength > 10) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(10).trim(), 1));
+            }
+            else if (query.toLowerCase().startsWith("password: ") && queryLength > 10) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(10).trim(), 2));
+            }
+            else if (query.toLowerCase().startsWith("role: ") && queryLength > 6) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(6).trim(), 3));
+            }
+            else {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery, 0, 1, 2, 3)); // search by
+            }
         }
     }
 
@@ -155,10 +173,9 @@ public class StaffManagementUI extends JPanel {
         JButton promoteBtn = UITheme.successBtn("Promote");
         JButton demoteBtn  = UITheme.dangerBtn("Demote");
 
-        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         btnRow.setOpaque(false);
-        btnRow.add(removeBtn);
-        btnRow.add(addBtn);
 
         // true -> promote, false -> demote
         promoteBtn.addActionListener(e -> handleRoleChange(true));
@@ -169,6 +186,16 @@ public class StaffManagementUI extends JPanel {
         btnRow.add(removeBtn);
         btnRow.add(addBtn);
 
+        JButton togglePassBtn = UITheme.secondaryBtn("Show Passwords");
+        togglePassBtn.addActionListener(e -> togglePasswords(togglePassBtn));
+        btnRow.add(togglePassBtn);
+
+        JLabel searchFilters = new JLabel("command followed by  \": \"        |        Search commands: name, username, password, role");
+        searchFilters.setFont(UITheme.FONT_SMALL);
+        searchFilters.setForeground(UITheme.SECONDARY);
+        btnRow.add(searchFilters);
+
+
         // live count label on the left
         JLabel countLabel = new JLabel();
         countLabel.setFont(UITheme.FONT_SMALL);
@@ -178,9 +205,56 @@ public class StaffManagementUI extends JPanel {
         footer.setOpaque(false);
         footer.setBorder(BorderFactory.createEmptyBorder(10, 16, 14, 16));
         footer.add(countLabel, BorderLayout.WEST);
-        footer.add(btnRow, BorderLayout.EAST);
+        footer.add(btnRow, BorderLayout.WEST);
         return footer;
     }
+
+
+
+    private void togglePasswords(JButton btn) {
+        passwordsVisible = !passwordsVisible; // toggle password when clicked
+        btn.setText(passwordsVisible ? "Hide Passwords" : "Show Passwords");
+
+        if (passwordsVisible) {
+            // if true show the actual passwords
+            table.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {
+                @Override
+                public Component getTableCellRendererComponent(JTable t, Object value, boolean sel, boolean focus, int row, int col) {
+                    Component c = super.getTableCellRendererComponent(t, value, sel, focus, row, col);
+                    if (!sel) {
+                        c.setBackground(row % 2 == 0 ? Color.WHITE : UITheme.ROW_ALT);
+                        c.setForeground(Color.BLACK);
+                    }
+                    return c;
+                }
+            });
+        } else {
+            hide();
+        }
+
+        table.repaint();
+    }
+
+    public void hide() {
+        // put it in a seperate one cause it was causing issues and not triggering at the start for some reason idk why
+        //check column three again which is the pasword one
+        table.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object value, boolean sel, boolean focus, int row, int col) {
+                Component c = super.getTableCellRendererComponent(t, value != null ? "**************" : "", sel, focus, row, col);
+                // fix color issue
+                if (!sel) {
+                    c.setBackground(row % 2 == 0 ? Color.WHITE : UITheme.ROW_ALT);
+                    c.setForeground(Color.BLACK);
+                }
+
+                return c;
+            }
+        });
+    }
+
+
+
 
 
     private void handleRoleChange(boolean promote) {

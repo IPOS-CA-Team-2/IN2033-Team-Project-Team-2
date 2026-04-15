@@ -111,11 +111,40 @@ public class CustomerAccountUI extends JPanel {
         // check for ID, account #, name and status
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
         customerTable.setRowSorter(sorter);
-        if (query == null || query.isBlank()) {
+        if (query.isBlank()) {
             sorter.setRowFilter(null);
-        } else {
+        }
+        else {
+            String searchQuery = query.toLowerCase(); // convert to lowercasse
+            int queryLength = searchQuery.length();
             // if equals to anything on first  or second column
-            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + query, 0, 1, 2, 5));
+            if (query.toLowerCase().startsWith("id: ") && queryLength > 4) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(4).trim(), 0));
+            }
+            else if (query.toLowerCase().startsWith("account: ") && queryLength > 9) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(9).trim(), 1));
+            }
+            else if (query.toLowerCase().startsWith("name: ") && queryLength > 6) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(6).trim(), 2));
+            }
+            else if (query.toLowerCase().startsWith("balance: ") && queryLength > 9) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(9).trim(), 3));
+            }
+            else if (query.toLowerCase().startsWith("limit: ") && queryLength > 7) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(7).trim(), 4));
+            }
+            else if (query.toLowerCase().startsWith("status: ") && queryLength > 8) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(8).trim(), 5));
+            }
+            else if (query.toLowerCase().startsWith("1streminder: ") && queryLength > 13) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(13).trim(), 6));
+            }
+            else if (query.toLowerCase().startsWith("2ndreminder: ") && queryLength > 13) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(13).trim(), 6));
+            }
+            else {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery, 0, 1, 2, 3,4,5,6, 7));
+            }
         }
     }
 
@@ -224,6 +253,12 @@ public class CustomerAccountUI extends JPanel {
             panel.add(generateBtn);
             panel.add(restoreBtn);
         }
+
+        JLabel searchFilters = new JLabel("command followed by  \": \"        |        Search commands: id, account, name, balance, limit, status, 1streminder, 2ndreminder");
+        searchFilters.setFont(UITheme.FONT_SMALL);
+        searchFilters.setForeground(UITheme.SECONDARY);
+        panel.add(searchFilters, BorderLayout.SOUTH);
+
 
         return panel;
     }

@@ -107,11 +107,44 @@ public class StockManagementUI extends JPanel {
     private void filterTable(String query) {
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
         stockTable.setRowSorter(sorter);
-        if (query == null || query.isBlank()) {
+
+        if (query.isBlank()) {
             sorter.setRowFilter(null);
-        } else {
+        }
+        else {
+            String searchQuery = query.toLowerCase(); // convert to lowercasse
+            int queryLength = searchQuery.length();
             // if equals to anything on first  or second column
-            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + query, 0, 1));
+            if (query.toLowerCase().startsWith("id: ") && queryLength > 4) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(4).trim(), 0));
+            }
+            else if (query.toLowerCase().startsWith("name: ") && queryLength > 6) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(6).trim(), 1));
+            }
+            else if (query.toLowerCase().startsWith("quantity: ") && queryLength > 10) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(10).trim(), 2));
+            }
+            else if (query.toLowerCase().startsWith("cost: ") && queryLength > 6) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(6).trim(), 3));
+            }
+            else if (query.toLowerCase().startsWith("markup: ") && queryLength > 8) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(8).trim(), 4));
+            }
+            else if (query.toLowerCase().startsWith("price: ") && queryLength > 7) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(7).trim(), 5));
+            }
+            else if (query.toLowerCase().startsWith("vat: ") && queryLength > 5) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(5).trim(), 6));
+            }
+            else if (query.toLowerCase().startsWith("threshold: ") && queryLength > 11) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(11).trim(), 7));
+            }
+            else if (query.toLowerCase().startsWith("status: ") && queryLength >8) {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(8).trim(), 8));
+            }
+            else {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery, 0, 1, 2, 3,4,5,6, 7, 8));
+            }
         }
     }
 
@@ -177,11 +210,17 @@ public class StockManagementUI extends JPanel {
         removeItemBtn.addActionListener(e -> handleRemoveItem());
         refreshBtn.addActionListener(e -> loadStockData());
 
-        panel.add(increaseBtn);
+
         panel.add(decreaseBtn);
         panel.add(addItemBtn);
         panel.add(removeItemBtn);
         panel.add(refreshBtn);
+
+        JLabel searchFilters = new JLabel("command followed by  \": \"        |        Search commands: id, name, quantity, cost, markup, price, vat, threshold, status");
+        searchFilters.setFont(UITheme.FONT_SMALL);
+        searchFilters.setForeground(UITheme.SECONDARY);
+        panel.add(searchFilters);
+
         return panel;
     }
 
