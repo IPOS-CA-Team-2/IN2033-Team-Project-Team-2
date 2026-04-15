@@ -206,11 +206,11 @@ public class Main extends JFrame {
         AccountService accountSvc = new AccountService(new CustomerRepositoryImpl());
 
         // in-memory customers — no db access needed for these checks
-        Customer normalCustomer = new Customer("Test Normal", "1 Test St", "TST-N001", 500.0, DiscountType.FIXED, 0.10);
-        Customer suspendedCustomer = new Customer(0, "Test Suspended", "2 Test St", "TST-S001",
+        Customer normalCustomer = new Customer("Test Normal", "Test Normal", "", "1 Test St", "TST-N001", 500.0, DiscountType.FIXED, 0.10);
+        Customer suspendedCustomer = new Customer(0, "Test Suspended", "Test Suspended", "", "2 Test St", "TST-S001",
             500.0, 0.0, 0.0, DiscountType.NONE, 0.0, AccountStatus.SUSPENDED,
             "due", "no_need", null, null, null);
-        Customer defaultCustomer = new Customer(0, "Test Default", "3 Test St", "TST-D001",
+        Customer defaultCustomer = new Customer(0, "Test Default", "Test Default", "", "3 Test St", "TST-D001",
             500.0, 0.0, 0.0, DiscountType.NONE, 0.0, AccountStatus.IN_DEFAULT,
             "sent", "due", null, null, null);
 
@@ -222,18 +222,18 @@ public class Main extends JFrame {
         double fixedDisc = accountSvc.calculatePointOfSaleDiscount(normalCustomer, 100.0);
         check(s, Math.abs(fixedDisc - 10.0) < 0.001, "fixed 10% discount on £100 = £10.00 (got £" + fixedDisc + ")");
 
-        Customer flexCustomer = new Customer("Test Flex", "4 Test St", "TST-F001", 500.0, DiscountType.FLEXIBLE, 0.0);
+        Customer flexCustomer = new Customer("Test Flex", "Test Flex", "", "4 Test St", "TST-F001", 500.0, DiscountType.FLEXIBLE, 0.0);
         double flexPOS = accountSvc.calculatePointOfSaleDiscount(flexCustomer, 100.0);
         check(s, flexPOS == 0.0, "flexible discount = £0.00 at point of sale");
 
-        // flexible month-end discount tiers: <£50=1%, £50-£100=3%, >£100=5%
-        Customer flexLow  = new Customer(0, "Flex Low",  "", "TST-FL", 500, 0, 30.0,  DiscountType.FLEXIBLE, 0, AccountStatus.NORMAL, "no_need", "no_need", null, null, null);
-        Customer flexMid  = new Customer(0, "Flex Mid",  "", "TST-FM", 500, 0, 75.0,  DiscountType.FLEXIBLE, 0, AccountStatus.NORMAL, "no_need", "no_need", null, null, null);
-        Customer flexHigh = new Customer(0, "Flex High", "", "TST-FH", 500, 0, 150.0, DiscountType.FLEXIBLE, 0, AccountStatus.NORMAL, "no_need", "no_need", null, null, null);
+        // flexible month-end discount tiers: <£100=0%, £100-£300=1%, £300+=2%
+        Customer flexLow  = new Customer(0, "Flex Low",  "Flex Low",  "", "", "TST-FL", 500, 0, 75.0,  DiscountType.FLEXIBLE, 0, AccountStatus.NORMAL, "no_need", "no_need", null, null, null);
+        Customer flexMid  = new Customer(0, "Flex Mid",  "Flex Mid",  "", "", "TST-FM", 500, 0, 150.0, DiscountType.FLEXIBLE, 0, AccountStatus.NORMAL, "no_need", "no_need", null, null, null);
+        Customer flexHigh = new Customer(0, "Flex High", "Flex High", "", "", "TST-FH", 500, 0, 350.0, DiscountType.FLEXIBLE, 0, AccountStatus.NORMAL, "no_need", "no_need", null, null, null);
 
-        check(s, Math.abs(accountSvc.calculateFlexibleMonthEndDiscount(flexLow)  - 0.30) < 0.001, "flexible < £50 spend = 1% → £0.30");
-        check(s, Math.abs(accountSvc.calculateFlexibleMonthEndDiscount(flexMid)  - 2.25) < 0.001, "flexible £50-£100 spend = 3% → £2.25");
-        check(s, Math.abs(accountSvc.calculateFlexibleMonthEndDiscount(flexHigh) - 7.50) < 0.001, "flexible > £100 spend = 5% → £7.50");
+        check(s, Math.abs(accountSvc.calculateFlexibleMonthEndDiscount(flexLow)  - 0.0)  < 0.001, "flexible < £100 spend = 0% → £0.00");
+        check(s, Math.abs(accountSvc.calculateFlexibleMonthEndDiscount(flexMid)  - 1.50) < 0.001, "flexible £100-£300 spend = 1% → £1.50");
+        check(s, Math.abs(accountSvc.calculateFlexibleMonthEndDiscount(flexHigh) - 7.00) < 0.001, "flexible £300+ spend = 2% → £7.00");
 
         // --- 5. ReminderService ---
         System.out.println("\n--- 5. ReminderService ---");
@@ -242,7 +242,7 @@ public class Main extends JFrame {
 
         // insert a temporary customer with 1st reminder due
         String testAcct = "TEST-REM-TMP";
-        Customer tempCustomer = new Customer(0, "Test Reminder", "99 Test Lane", testAcct,
+        Customer tempCustomer = new Customer(0, "Test Reminder", "Test Reminder", "", "99 Test Lane", testAcct,
             500.0, 100.0, 80.0, DiscountType.NONE, 0.0, AccountStatus.SUSPENDED,
             "due", "no_need", null, null, LocalDate.now().minusDays(15));
         int tempId = custRepo.save(tempCustomer);

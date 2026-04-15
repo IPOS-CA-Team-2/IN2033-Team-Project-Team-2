@@ -20,6 +20,8 @@ public class CustomerRepositoryImpl implements CustomerRepository {
         return new Customer(
             rs.getInt("id"),
             rs.getString("name"),
+            rs.getString("contact_name"),
+            rs.getString("phone"),
             rs.getString("address"),
             rs.getString("account_number"),
             rs.getDouble("credit_limit"),
@@ -94,10 +96,10 @@ public class CustomerRepositoryImpl implements CustomerRepository {
     @Override
     public int save(Customer customer) {
         String sql = """
-            INSERT INTO customers (name, address, account_number, credit_limit, current_balance,
-                monthly_spend, discount_type, fixed_discount_rate, status,
+            INSERT INTO customers (name, contact_name, phone, address, account_number, credit_limit,
+                current_balance, monthly_spend, discount_type, fixed_discount_rate, status,
                 status_1st_reminder, status_2nd_reminder, date_1st_reminder, date_2nd_reminder, statement_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """;
 
         try (Connection conn = DatabaseManager.getConnection();
@@ -117,9 +119,9 @@ public class CustomerRepositoryImpl implements CustomerRepository {
     @Override
     public boolean update(Customer customer) {
         String sql = """
-            UPDATE customers SET name=?, address=?, account_number=?, credit_limit=?,
-                current_balance=?, monthly_spend=?, discount_type=?, fixed_discount_rate=?,
-                status=?, status_1st_reminder=?, status_2nd_reminder=?,
+            UPDATE customers SET name=?, contact_name=?, phone=?, address=?, account_number=?,
+                credit_limit=?, current_balance=?, monthly_spend=?, discount_type=?,
+                fixed_discount_rate=?, status=?, status_1st_reminder=?, status_2nd_reminder=?,
                 date_1st_reminder=?, date_2nd_reminder=?, statement_date=?
             WHERE id=?
         """;
@@ -128,7 +130,7 @@ public class CustomerRepositoryImpl implements CustomerRepository {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             setCustomerParams(stmt, customer);
-            stmt.setInt(15, customer.getCustomerId());
+            stmt.setInt(17, customer.getCustomerId());
             return stmt.executeUpdate() > 0;
 
         } catch (SQLException e) {
@@ -201,39 +203,41 @@ public class CustomerRepositoryImpl implements CustomerRepository {
 
     @Override
     public String generateAccountNumber() {
-        // get the highest existing CSM account number and increment it
-        String sql = "SELECT account_number FROM customers WHERE account_number LIKE 'CSM%' ORDER BY account_number DESC LIMIT 1";
+        // get the highest existing ACC account number and increment it
+        String sql = "SELECT account_number FROM customers WHERE account_number LIKE 'ACC%' ORDER BY account_number DESC LIMIT 1";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 String last = rs.getString("account_number");
-                // parse the numeric suffix (e.g. CSM000125 → 125)
+                // parse the numeric suffix (e.g. ACC0002 → 2)
                 int next = Integer.parseInt(last.substring(3)) + 1;
-                return String.format("CSM%06d", next);
+                return String.format("ACC%04d", next);
             }
         } catch (SQLException | NumberFormatException e) {
             System.err.println("db error generating account number: " + e.getMessage());
         }
         // no customers yet — start from 1
-        return "CSM000001";
+        return "ACC0001";
     }
 
-    // helper — binds all customer fields to a prepared statement (14 params)
+    // helper — binds all customer fields to a prepared statement (16 params)
     private void setCustomerParams(PreparedStatement stmt, Customer c) throws SQLException {
         stmt.setString(1, c.getName());
-        stmt.setString(2, c.getAddress());
-        stmt.setString(3, c.getAccountNumber());
-        stmt.setDouble(4, c.getCreditLimit());
-        stmt.setDouble(5, c.getCurrentBalance());
-        stmt.setDouble(6, c.getMonthlySpend());
-        stmt.setString(7, c.getDiscountType().name());
-        stmt.setDouble(8, c.getFixedDiscountRate());
-        stmt.setString(9, c.getStatus().name());
-        stmt.setString(10, c.getStatus1stReminder());
-        stmt.setString(11, c.getStatus2ndReminder());
-        stmt.setString(12, c.getDate1stReminder() != null ? c.getDate1stReminder().toString() : null);
-        stmt.setString(13, c.getDate2ndReminder() != null ? c.getDate2ndReminder().toString() : null);
-        stmt.setString(14, c.getStatementDate() != null ? c.getStatementDate().toString() : null);
+        stmt.setString(2, c.getContactName());
+        stmt.setString(3, c.getPhone());
+        stmt.setString(4, c.getAddress());
+        stmt.setString(5, c.getAccountNumber());
+        stmt.setDouble(6, c.getCreditLimit());
+        stmt.setDouble(7, c.getCurrentBalance());
+        stmt.setDouble(8, c.getMonthlySpend());
+        stmt.setString(9, c.getDiscountType().name());
+        stmt.setDouble(10, c.getFixedDiscountRate());
+        stmt.setString(11, c.getStatus().name());
+        stmt.setString(12, c.getStatus1stReminder());
+        stmt.setString(13, c.getStatus2ndReminder());
+        stmt.setString(14, c.getDate1stReminder() != null ? c.getDate1stReminder().toString() : null);
+        stmt.setString(15, c.getDate2ndReminder() != null ? c.getDate2ndReminder().toString() : null);
+        stmt.setString(16, c.getStatementDate() != null ? c.getStatementDate().toString() : null);
     }
 }
