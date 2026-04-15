@@ -573,14 +573,7 @@ public class Main extends JFrame {
         textStack.add(Box.createVerticalStrut(4));
         textStack.add(subtitle);
 
-        // right: Rx symbol as a decorative element
-        JLabel rx = new JLabel("Rx");
-        rx.setFont(new Font("Arial", Font.BOLD, 38));
-        rx.setForeground(new Color(255, 255, 255, 45));
-        rx.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 0));
-
         header.add(textStack, BorderLayout.WEST);
-        header.add(rx, BorderLayout.EAST);
         return header;
     }
 
