@@ -2,18 +2,26 @@ package service;
 
 import model.*;
 import repository.CustomerRepository;
+import repository.SaleRepository;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 
 // handles account holder logic — credit checks, discounts, status changes etc
 public class AccountService {
 
     private final CustomerRepository customerRepository;
+    private final SaleRepository saleRepository; // optional — used to derive statement dates from real sale history
 
     public AccountService(CustomerRepository customerRepository) {
+        this(customerRepository, null);
+    }
+
+    public AccountService(CustomerRepository customerRepository, SaleRepository saleRepository) {
         if (customerRepository == null) throw new IllegalArgumentException("CustomerRepository cannot be null");
         this.customerRepository = customerRepository;
+        this.saleRepository = saleRepository;
     }
 
     // only NORMAL accounts can buy — suspended and in default are blocked
@@ -67,14 +75,17 @@ public class AccountService {
     }
 
     // called when a payment is received from an account holder
-    // per brief: if account not in default, reset reminder flags
+    // per brief: suspended accounts auto-restore to normal when balance is cleared
+    //            in-default accounts cannot auto-restore — manager must do it manually
     public boolean processPayment(Customer customer, double amount) {
         double newBalance = Math.max(0, customer.getCurrentBalance() - amount);
+        // round to 2dp to avoid floating point artifacts (e.g. 0.004 remaining after discount)
+        newBalance = Math.round(newBalance * 100.0) / 100.0;
 
         customerRepository.updateBalance(customer.getCustomerId(), newBalance, customer.getMonthlySpend());
 
-        // if not in default and balance is now cleared, reset reminder status per brief algorithm
-        if (customer.getStatus() != AccountStatus.IN_DEFAULT && newBalance == 0) {
+        // only auto-restore SUSPENDED accounts — IN_DEFAULT requires manager intervention
+        if (customer.getStatus() == AccountStatus.SUSPENDED && newBalance < 0.01) {
             customerRepository.updateStatus(
                 customer.getCustomerId(),
                 AccountStatus.NORMAL,
@@ -87,56 +98,83 @@ public class AccountService {
         return true;
     }
 
-    // runs the status state machine on startup — normal > suspended > in default
+    // runs the status state machine — normal → suspended → in default
     // based on fig 1 in the brief
     public void updateAccountStatuses() {
         LocalDate today = LocalDate.now();
         List<Customer> customers = customerRepository.findAll();
-        //System.out.println("checking statuses for " + customers.size() + " customers");
 
         for (Customer customer : customers) {
-            // no debt = nothing to change
-            if (customer.getCurrentBalance() <= 0) continue;
+            // treat near-zero balances as cleared (avoids floating point artifacts like 0.004)
+            double balance = Math.round(customer.getCurrentBalance() * 100.0) / 100.0;
+            if (balance < 0.01) continue;
 
-            // no statement date means no debt period started yet
-            LocalDate statementDate = customer.getStatementDate();
-            if (statementDate == null) continue;
+            // derive statement date from the customer's oldest sale so we use the correct
+            // billing period — if no sale repo available, fall back to end of last month
+            LocalDate statementDate = deriveStatementDate(customer, today);
+
+            // persist it if it was missing or stale
+            if (!statementDate.equals(customer.getStatementDate())) {
+                setStatementDate(customer, statementDate);
+            }
 
             // 15th of the month following the statement — suspension deadline
-            LocalDate suspendDate = statementDate.plusMonths(1).withDayOfMonth(15);
-            // end of that same month — default deadline
-            int lastDay = statementDate.plusMonths(1).lengthOfMonth();
-            LocalDate defaultDate = statementDate.plusMonths(1).withDayOfMonth(lastDay);
+            LocalDate suspendDate  = statementDate.plusMonths(1).withDayOfMonth(15);
+            // end of that same following month — default deadline
+            LocalDate defaultDate  = statementDate.plusMonths(1)
+                    .withDayOfMonth(statementDate.plusMonths(1).lengthOfMonth());
 
-            if (customer.getStatus() == AccountStatus.NORMAL && !today.isBefore(suspendDate)) {
-                // past the 15th and still unpaid — suspend the account
-                customerRepository.updateStatus(
-                    customer.getCustomerId(),
-                    AccountStatus.SUSPENDED,
-                    "due",
-                    customer.getStatus2ndReminder(),
-                    null, null,
-                    statementDate
-                );
+            AccountStatus current = customer.getStatus();
 
-            } else if (customer.getStatus() == AccountStatus.SUSPENDED && !today.isBefore(defaultDate)) {
-                // past end of month and still unpaid — move to in default
-                customerRepository.updateStatus(
-                    customer.getCustomerId(),
-                    AccountStatus.IN_DEFAULT,
-                    customer.getStatus1stReminder(),
-                    "due",
-                    null, null,
-                    statementDate
-                );
+            if (current == AccountStatus.NORMAL && !today.isBefore(defaultDate)) {
+                // past both deadlines in one go (e.g. very old purchase) — skip straight to in default
+                customerRepository.updateStatus(customer.getCustomerId(),
+                    AccountStatus.IN_DEFAULT, "due", "due", null, null, statementDate);
+
+            } else if (current == AccountStatus.NORMAL && !today.isBefore(suspendDate)) {
+                // past the 15th — suspend
+                customerRepository.updateStatus(customer.getCustomerId(),
+                    AccountStatus.SUSPENDED, "due", customer.getStatus2ndReminder(),
+                    null, null, statementDate);
+
+            } else if (current == AccountStatus.SUSPENDED && !today.isBefore(defaultDate)) {
+                // still unpaid past end of month — in default
+                customerRepository.updateStatus(customer.getCustomerId(),
+                    AccountStatus.IN_DEFAULT, customer.getStatus1stReminder(),
+                    "due", null, null, statementDate);
             }
         }
+    }
+
+    // derives the correct statement date for a customer:
+    //   if we have a sale repo → use end of the month the oldest sale was made in
+    //   otherwise → end of last month
+    private LocalDate deriveStatementDate(Customer customer, LocalDate today) {
+        if (saleRepository != null) {
+            List<model.Sale> sales = saleRepository.findByCustomerId(customer.getCustomerId());
+            if (sales != null && !sales.isEmpty()) {
+                LocalDate oldest = sales.stream()
+                    .map(s -> s.getSaleDate().toLocalDate())
+                    .min(Comparator.naturalOrder())
+                    .orElse(null);
+                if (oldest != null) {
+                    return oldest.withDayOfMonth(oldest.lengthOfMonth());
+                }
+            }
+        }
+        // fallback — end of last month
+        LocalDate lastMonth = today.minusMonths(1);
+        return lastMonth.withDayOfMonth(lastMonth.lengthOfMonth());
     }
 
     // explicit manager intervention to restore an in-default account to normal
     // per brief: can only be done by authorised user (manager)
     public boolean restoreToNormal(Customer customer) {
         if (customer.getStatus() != AccountStatus.IN_DEFAULT) return false;
+
+        // balance must be fully cleared before an in-default account can be restored
+        double balance = Math.round(customer.getCurrentBalance() * 100.0) / 100.0;
+        if (balance >= 0.01) return false;
 
         return customerRepository.updateStatus(
             customer.getCustomerId(),
@@ -147,11 +185,15 @@ public class AccountService {
         );
     }
 
-    // set the statement date to end of current month — called when generating monthly statements
+    // set the statement date to end of the previous month — called when generating monthly statements
+    // e.g. run in April → statement_date = 31 March → suspension deadline = 15 April
     public boolean setStatementDate(Customer customer) {
-        LocalDate endOfMonth = LocalDate.now()
-            .withDayOfMonth(LocalDate.now().lengthOfMonth());
+        LocalDate lastMonth = LocalDate.now().minusMonths(1);
+        return setStatementDate(customer, lastMonth.withDayOfMonth(lastMonth.lengthOfMonth()));
+    }
 
+    // set an explicit statement date — used internally when deriving from sale history
+    public boolean setStatementDate(Customer customer, LocalDate statementDate) {
         return customerRepository.updateStatus(
             customer.getCustomerId(),
             customer.getStatus(),
@@ -159,7 +201,7 @@ public class AccountService {
             customer.getStatus2ndReminder(),
             customer.getDate1stReminder(),
             customer.getDate2ndReminder(),
-            endOfMonth
+            statementDate
         );
     }
 
