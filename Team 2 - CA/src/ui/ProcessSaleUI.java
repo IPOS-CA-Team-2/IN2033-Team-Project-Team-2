@@ -13,7 +13,10 @@ import integration.CardClearanceResult;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 // sale screen for pharmacists — pick items, set payment, process sale, show receipt
@@ -46,6 +49,7 @@ public class ProcessSaleUI extends JPanel {
     private JTextField discountField;
 
     private JLabel totalLabel;
+    private JSpinner saleDateSpinner;
     private List<StockItem> allStock = new ArrayList<>();
 
     public ProcessSaleUI(User currentUser) {
@@ -185,6 +189,17 @@ public class ProcessSaleUI extends JPanel {
         outer.setBorder(BorderFactory.createEmptyBorder(5, 10, 10, 10));
 
         JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 5));
+
+        // date spinner — defaults to today, can be backdated for demo purposes
+        SpinnerDateModel dateModel = new SpinnerDateModel(new Date(), null, new Date(), java.util.Calendar.DAY_OF_MONTH);
+        saleDateSpinner = new JSpinner(dateModel);
+        JSpinner.DateEditor dateEditor = new JSpinner.DateEditor(saleDateSpinner, "dd/MM/yyyy");
+        saleDateSpinner.setEditor(dateEditor);
+        saleDateSpinner.setPreferredSize(new Dimension(110, 26));
+        topRow.add(new JLabel("Sale Date:"));
+        topRow.add(saleDateSpinner);
+
+        topRow.add(new JSeparator(SwingConstants.VERTICAL));
 
         discountField = new JTextField("0", 5);
         topRow.add(new JLabel("Discount (%):"));
@@ -422,11 +437,15 @@ public class ProcessSaleUI extends JPanel {
         }
 
         try {
+            // get chosen sale date from spinner — convert Date → LocalDateTime
+            Date chosenDate = (Date) saleDateSpinner.getValue();
+            LocalDateTime saleDate = chosenDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+
             Receipt receipt;
             if (selectedCustomer != null) {
-                receipt = saleService.processSaleForAccount(selectedCustomer, basketLines, method, cardDetails, currentUser.getName());
+                receipt = saleService.processSaleForAccount(selectedCustomer, basketLines, method, cardDetails, currentUser.getName(), saleDate);
             } else {
-                receipt = saleService.processSale(0, basketLines, discountPercent, method, cardDetails, currentUser.getName());
+                receipt = saleService.processSale(0, basketLines, discountPercent, method, cardDetails, currentUser.getName(), saleDate);
             }
             showReceipt(receipt);
             basketLines.clear();

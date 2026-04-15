@@ -34,13 +34,27 @@ public class SaleService {
     public Receipt processSale(int customerId, List<SaleLine> lines, double discountPercent,
                                PaymentMethod paymentMethod, CardDetails cardDetails,
                                String cashierName) throws SaleException {
-        return processInternal(customerId, null, lines, discountPercent, paymentMethod, cardDetails, cashierName);
+        return processInternal(customerId, null, lines, discountPercent, paymentMethod, cardDetails, cashierName, LocalDateTime.now());
+    }
+
+    // overload — allows a custom sale date (e.g. for backdating during demo)
+    public Receipt processSale(int customerId, List<SaleLine> lines, double discountPercent,
+                               PaymentMethod paymentMethod, CardDetails cardDetails,
+                               String cashierName, LocalDateTime saleDate) throws SaleException {
+        return processInternal(customerId, null, lines, discountPercent, paymentMethod, cardDetails, cashierName, saleDate);
     }
 
     // process a sale for an account holder — applies credit check and fixed discount
     public Receipt processSaleForAccount(Customer customer, List<SaleLine> lines,
                                          PaymentMethod paymentMethod, CardDetails cardDetails,
                                          String cashierName) throws SaleException {
+        return processSaleForAccount(customer, lines, paymentMethod, cardDetails, cashierName, LocalDateTime.now());
+    }
+
+    // overload — allows a custom sale date (e.g. for backdating during demo)
+    public Receipt processSaleForAccount(Customer customer, List<SaleLine> lines,
+                                         PaymentMethod paymentMethod, CardDetails cardDetails,
+                                         String cashierName, LocalDateTime saleDate) throws SaleException {
         if (accountService == null) throw new SaleException(SaleException.Reason.SAVE_FAILED,
             "account service not configured");
         if (customer == null) throw new SaleException(SaleException.Reason.SAVE_FAILED,
@@ -64,7 +78,7 @@ public class SaleService {
         }
 
         Receipt receipt = processInternal(customer.getCustomerId(), customer, lines,
-            discountPercent, paymentMethod, cardDetails, cashierName);
+            discountPercent, paymentMethod, cardDetails, cashierName, saleDate);
 
         // add to customer's outstanding balance and monthly spend
         accountService.recordAccountSale(customer, chargeAmount);
@@ -75,7 +89,8 @@ public class SaleService {
     // shared internal sale processing logic
     private Receipt processInternal(int customerId, Customer customer, List<SaleLine> lines,
                                     double discountPercent, PaymentMethod paymentMethod,
-                                    CardDetails cardDetails, String cashierName) throws SaleException {
+                                    CardDetails cardDetails, String cashierName,
+                                    LocalDateTime saleDate) throws SaleException {
         // 1. basic validation
         if (lines == null || lines.isEmpty())
             throw new SaleException(SaleException.Reason.EMPTY_SALE, "cannot process a sale with no items");
@@ -99,7 +114,7 @@ public class SaleService {
         }
 
         // 3. build and persist the sale
-        Sale sale = new Sale(0, customerId, lines, LocalDateTime.now(),
+        Sale sale = new Sale(0, customerId, lines, saleDate,
                              discountPercent, paymentMethod, cardDetails);
         //System.out.println("saving sale for customer " + customerId + " total=" + sale.getTotal());
         int generatedId = saleRepository.save(sale);

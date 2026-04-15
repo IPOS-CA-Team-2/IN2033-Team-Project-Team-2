@@ -1,5 +1,6 @@
 package db;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -8,14 +9,31 @@ import java.sql.Statement;
 // manages the sqlite connection and initialises all tables on first run
 public class DatabaseManager {
 
-    private static final String DB_PATH = "ipos_ca.db";
+    // resolve db path regardless of working directory:
+    //   running from Team 2 - CA/  (IntelliJ default) → ipos_ca.db
+    //   running from repo root      (terminal)         → Team 2 - CA/ipos_ca.db
+    private static final String DB_PATH = resolveDbPath();
     private static final String URL = "jdbc:sqlite:" + DB_PATH;
+
+    private static String resolveDbPath() {
+        // if src/ exists here we are already inside the module root
+        if (new File("src").isDirectory()) {
+            return "ipos_ca.db";
+        }
+        // if Team 2 - CA/ exists we are in the repo root
+        File moduleDir = new File("Team 2 - CA");
+        if (moduleDir.isDirectory()) {
+            return "Team 2 - CA/ipos_ca.db";
+        }
+        // fallback — use working directory as-is
+        return "ipos_ca.db";
+    }
 
     static {
         try {
             Class.forName("org.sqlite.JDBC");
             initialise();
-            System.out.println("db ready: " + DB_PATH);
+            System.out.println("db ready: " + new File(DB_PATH).getAbsolutePath());
         } catch (ClassNotFoundException e) {
             throw new RuntimeException("SQLite JDBC driver not found.", e);
         } catch (SQLException e) {

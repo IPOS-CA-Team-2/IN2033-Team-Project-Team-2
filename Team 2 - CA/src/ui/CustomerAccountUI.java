@@ -2,6 +2,7 @@ package ui;
 
 import model.*;
 import repository.CustomerRepositoryImpl;
+import repository.SaleRepositoryImpl;
 import service.AccountService;
 import service.ReminderService;
 
@@ -39,7 +40,7 @@ public class CustomerAccountUI extends JPanel {
     public CustomerAccountUI(User user) {
         this.currentUser = user;
         this.customerRepo = new CustomerRepositoryImpl();
-        this.accountService = new AccountService(customerRepo);
+        this.accountService = new AccountService(customerRepo, new SaleRepositoryImpl());
         this.reminderService = new ReminderService(customerRepo);
 
         setLayout(new BorderLayout());
@@ -236,7 +237,10 @@ public class CustomerAccountUI extends JPanel {
         addBtn.addActionListener(e -> handleAddCustomer());
         editBtn.addActionListener(e -> handleEditCustomer());
         paymentBtn.addActionListener(e -> handleRecordPayment());
-        refreshBtn.addActionListener(e -> loadCustomerData(null));
+        refreshBtn.addActionListener(e -> {
+            accountService.updateAccountStatuses();
+            loadCustomerData(null);
+        });
 
         panel.add(addBtn);
         panel.add(editBtn);
@@ -539,9 +543,19 @@ public class CustomerAccountUI extends JPanel {
             return;
         }
 
+        // balance must be fully cleared before restoration is allowed
+        double balance = Math.round(c.getCurrentBalance() * 100.0) / 100.0;
+        if (balance >= 0.01) {
+            JOptionPane.showMessageDialog(this,
+                "Cannot restore " + c.getName() + " (" + c.getAccountNumber() + ").\n\n"
+                + "Outstanding balance of £" + String.format("%.2f", c.getCurrentBalance())
+                + " must be cleared before the account can be restored to Normal.",
+                "Balance Outstanding", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         int confirm = JOptionPane.showConfirmDialog(this,
-            "Restore " + c.getName() + " (" + c.getAccountNumber() + ") to Normal status?\n" +
-            "Outstanding balance of £" + String.format("%.2f", c.getCurrentBalance()) + " will remain.",
+            "Restore " + c.getName() + " (" + c.getAccountNumber() + ") to Normal status?",
             "Confirm Restore", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
         if (confirm != JOptionPane.YES_OPTION) return;
@@ -607,6 +621,16 @@ public class CustomerAccountUI extends JPanel {
     }
 
     private void handleGenerateStatements() {
+        // set statement_date for every customer with an outstanding balance before generating text
+        // this starts the suspension clock: statement_date = end of last month,
+        // so suspension deadline = 15th of this month
+        List<Customer> allCustomers = customerRepo.findAll();
+        for (Customer c : allCustomers) {
+            if (c.getCurrentBalance() > 0) {
+                accountService.setStatementDate(c);
+            }
+        }
+
         List<String[]> statements = reminderService.generateMonthlyStatements();
 
         if (statements.isEmpty()) {
@@ -631,5 +655,9 @@ public class CustomerAccountUI extends JPanel {
                         "Monthly Statement — " + entry[0], JOptionPane.PLAIN_MESSAGE);
             }
         }
+
+        // immediately re-check statuses so any accounts past the deadline show as suspended
+        accountService.updateAccountStatuses();
+        loadCustomerData(null);
     }
 }
