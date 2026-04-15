@@ -310,11 +310,13 @@ public class CustomerAccountUI extends JPanel {
         // generate the next account number before showing the form
         String generatedAcctNum = customerRepo.generateAccountNumber();
 
-        JTextField nameField    = new JTextField();
-        JTextField addressField = new JTextField();
-        JTextField limitField   = new JTextField("500.00");
+        JTextField nameField        = new JTextField();
+        JTextField contactNameField = new JTextField();
+        JTextField phoneField       = new JTextField();
+        JTextField addressField     = new JTextField();
+        JTextField limitField       = new JTextField("500.00");
         JComboBox<DiscountType> discountCombo = new JComboBox<>(DiscountType.values());
-        JTextField rateField    = new JTextField("0");
+        JTextField rateField        = new JTextField("0");
         rateField.setEnabled(false);
 
         discountCombo.addActionListener(e ->
@@ -327,7 +329,9 @@ public class CustomerAccountUI extends JPanel {
 
         Object[] fields = {
             "Account Number (auto):", acctLabel,
-            "Name:", nameField,
+            "Account Holder Name:", nameField,
+            "Contact Name:", contactNameField,
+            "Phone:", phoneField,
             "Address:", addressField,
             "Credit Limit (£):", limitField,
             "Discount Type:", discountCombo,
@@ -341,6 +345,8 @@ public class CustomerAccountUI extends JPanel {
             double rate = dtype == DiscountType.FIXED ? Double.parseDouble(rateField.getText().trim()) / 100.0 : 0.0;
             Customer newCustomer = new Customer(
                 nameField.getText().trim(),
+                contactNameField.getText().trim(),
+                phoneField.getText().trim(),
                 addressField.getText().trim(),
                 generatedAcctNum,
                 Double.parseDouble(limitField.getText().trim()),
@@ -365,9 +371,11 @@ public class CustomerAccountUI extends JPanel {
         Customer c = getSelectedCustomer();
         if (c == null) return;
 
-        JTextField nameField    = new JTextField(c.getName());
-        JTextField addressField = new JTextField(c.getAddress() != null ? c.getAddress() : "");
-        JTextField limitField   = new JTextField(String.format("%.2f", c.getCreditLimit()));
+        JTextField nameField        = new JTextField(c.getName());
+        JTextField contactNameField = new JTextField(c.getContactName() != null ? c.getContactName() : "");
+        JTextField phoneField       = new JTextField(c.getPhone() != null ? c.getPhone() : "");
+        JTextField addressField     = new JTextField(c.getAddress() != null ? c.getAddress() : "");
+        JTextField limitField       = new JTextField(String.format("%.2f", c.getCreditLimit()));
         JComboBox<DiscountType> discountCombo = new JComboBox<>(DiscountType.values());
         discountCombo.setSelectedItem(c.getDiscountType());
         JTextField rateField = new JTextField(String.format("%.0f", c.getFixedDiscountRate() * 100));
@@ -377,7 +385,9 @@ public class CustomerAccountUI extends JPanel {
             rateField.setEnabled(discountCombo.getSelectedItem() == DiscountType.FIXED));
 
         Object[] fields = {
-            "Name:", nameField,
+            "Account Holder Name:", nameField,
+            "Contact Name:", contactNameField,
+            "Phone:", phoneField,
             "Address:", addressField,
             "Credit Limit (£):", limitField,
             "Discount Type:", discountCombo,
@@ -390,8 +400,10 @@ public class CustomerAccountUI extends JPanel {
             DiscountType dtype = (DiscountType) discountCombo.getSelectedItem();
             double rate = dtype == DiscountType.FIXED ? Double.parseDouble(rateField.getText().trim()) / 100.0 : 0.0;
             Customer updated = new Customer(
-                c.getCustomerId(), nameField.getText().trim(), addressField.getText().trim(),
-                c.getAccountNumber(), Double.parseDouble(limitField.getText().trim()),
+                c.getCustomerId(), nameField.getText().trim(),
+                contactNameField.getText().trim(), phoneField.getText().trim(),
+                addressField.getText().trim(), c.getAccountNumber(),
+                Double.parseDouble(limitField.getText().trim()),
                 c.getCurrentBalance(), c.getMonthlySpend(),
                 dtype, rate, c.getStatus(),
                 c.getStatus1stReminder(), c.getStatus2ndReminder(),

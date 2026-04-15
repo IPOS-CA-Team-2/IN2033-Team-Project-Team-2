@@ -53,7 +53,11 @@ public class DatabaseManager {
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS stock (
                     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    item_code           TEXT NOT NULL DEFAULT '',
                     name                TEXT NOT NULL,
+                    package_type        TEXT NOT NULL DEFAULT '',
+                    unit                TEXT NOT NULL DEFAULT '',
+                    units_per_pack      INTEGER NOT NULL DEFAULT 0,
                     quantity            INTEGER NOT NULL DEFAULT 0,
                     bulk_cost           REAL NOT NULL,
                     markup_rate         REAL NOT NULL DEFAULT 0.0,
@@ -67,6 +71,8 @@ public class DatabaseManager {
                 CREATE TABLE IF NOT EXISTS customers (
                     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
                     name                TEXT NOT NULL,
+                    contact_name        TEXT NOT NULL DEFAULT '',
+                    phone               TEXT NOT NULL DEFAULT '',
                     address             TEXT,
                     account_number      TEXT NOT NULL UNIQUE,
                     credit_limit        REAL NOT NULL DEFAULT 500.0,
@@ -83,15 +89,20 @@ public class DatabaseManager {
                 )
             """);
 
-            // seed sample account holders
+            // migration: add contact_name and phone to existing installations
+            try { stmt.execute("ALTER TABLE customers ADD COLUMN contact_name TEXT NOT NULL DEFAULT ''"); }
+            catch (SQLException ignored) { /* already present */ }
+            try { stmt.execute("ALTER TABLE customers ADD COLUMN phone TEXT NOT NULL DEFAULT ''"); }
+            catch (SQLException ignored) { /* already present */ }
+
+            // seed account holders from spec
             stmt.execute("""
                 INSERT OR IGNORE INTO customers
-                    (name, address, account_number, credit_limit, current_balance, monthly_spend,
-                     discount_type, fixed_discount_rate, status, status_1st_reminder, status_2nd_reminder)
+                    (name, contact_name, phone, address, account_number, credit_limit, current_balance,
+                     monthly_spend, discount_type, fixed_discount_rate, status, status_1st_reminder, status_2nd_reminder)
                 VALUES
-                    ('J. Smith',    '27 Sainsbury Close, Stratford, Essex EJ6 5TJ', 'CSM000123', 500.0,  0.0, 0.0, 'FIXED',    0.10, 'NORMAL', 'no_need', 'no_need'),
-                    ('A. Johnson',  '14 Maple Avenue, London, SE1 4AB',             'CSM000124', 750.0,  0.0, 0.0, 'FLEXIBLE', 0.00, 'NORMAL', 'no_need', 'no_need'),
-                    ('M. Patel',    '5 Green Lane, Birmingham, B2 7CD',             'CSM000125', 300.0,  0.0, 0.0, 'NONE',     0.00, 'NORMAL', 'no_need', 'no_need')
+                    ('Ms Eva Bauyer',    'Ms Eva Bauyer',    '0207 321 8001', '1, Liverpool street, London EC2V 8NS', 'ACC0001', 500.0, 0.0, 0.0, 'FIXED',    0.03, 'NORMAL', 'no_need', 'no_need'),
+                    ('Mr Glynne Morrison','Ms Glynne Morisson','0207 321 8001','1, Liverpool street, London EC2V 8NS', 'ACC0002', 500.0, 0.0, 0.0, 'FLEXIBLE', 0.00, 'NORMAL', 'no_need', 'no_need')
             """);
 
             // sales table — one row per transaction
@@ -177,14 +188,36 @@ public class DatabaseManager {
             try { stmt.execute("ALTER TABLE wholesale_orders ADD COLUMN sa_order_id INTEGER NOT NULL DEFAULT 0"); }
             catch (SQLException ignored) { /* column already present — safe to skip */ }
 
-            // seed stock items — prices are bulk cost, markup handled in StockItem.getUnitPrice()
+            // migration: add new stock columns to existing installations
+            try { stmt.execute("ALTER TABLE stock ADD COLUMN item_code TEXT NOT NULL DEFAULT ''"); }
+            catch (SQLException ignored) { /* already present */ }
+            try { stmt.execute("ALTER TABLE stock ADD COLUMN package_type TEXT NOT NULL DEFAULT ''"); }
+            catch (SQLException ignored) { /* already present */ }
+            try { stmt.execute("ALTER TABLE stock ADD COLUMN unit TEXT NOT NULL DEFAULT ''"); }
+            catch (SQLException ignored) { /* already present */ }
+            try { stmt.execute("ALTER TABLE stock ADD COLUMN units_per_pack INTEGER NOT NULL DEFAULT 0"); }
+            catch (SQLException ignored) { /* already present */ }
+
+            // seed stock — all 14 products from the ipos spec catalogue
+            // ids 1-5 match sa's product ids for wholesale ordering integration
+            // bulk_cost = package cost from spec, markup 30%, vat 0% (applied globally at sale)
             stmt.execute("""
-                INSERT OR IGNORE INTO stock (id, name, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold) VALUES
-                    (1, 'Paracetamol 500mg',  200, 1.92, 0.30, 0.00, 20),
-                    (2, 'Ibuprofen 200mg',    150, 3.07, 0.30, 0.00, 15),
-                    (3, 'Amoxicillin 250mg',    8, 6.92, 0.30, 0.00, 10),
-                    (4, 'Cetirizine 10mg',      60, 3.45, 0.30, 0.00, 10),
-                    (5, 'Omeprazole 20mg',       5, 5.38, 0.30, 0.00, 10)
+                INSERT OR REPLACE INTO stock
+                    (id, item_code, name, package_type, unit, units_per_pack, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold) VALUES
+                    (1,  '100 00001', 'Paracetamol',          'Box',    'Caps', 20,  121, 0.10,  1.0, 0.00, 10),
+                    (2,  '100 00002', 'Aspirin',              'Box',    'Caps', 20,  201, 0.50,  1.0, 0.00, 15),
+                    (3,  '100 00003', 'Analgin',              'Box',    'Caps', 10,   25, 1.20,  1.0, 0.00, 10),
+                    (4,  '100 00004', 'Celebrex, caps 100 mg','Box',    'Caps', 10,   43, 10.00, 1.0, 0.00, 10),
+                    (5,  '100 00005', 'Celebrex, caps 200 mg','Box',    'Caps', 10,   35, 18.50, 1.0, 0.00,  5),
+                    (6,  '100 00006', 'Retin-A Tretin, 30 g', 'Box',    'Caps', 20,   28, 25.00, 1.0, 0.00, 10),
+                    (7,  '100 00007', 'Lipitor TB, 20 mg',    'Box',    'Caps', 30,   10, 15.50, 1.0, 0.00, 10),
+                    (8,  '100 00008', 'Claritin CR, 60g',     'Box',    'Caps', 20,   21, 19.50, 1.0, 0.00, 10),
+                    (9,  '200 00004', 'Iodine tincture',      'Bottle', 'Ml',  100,   35,  0.30, 1.0, 0.00, 10),
+                    (10, '200 00005', 'Rhynol',               'Bottle', 'Ml',  200,   14,  2.50, 1.0, 0.00, 15),
+                    (11, '300 00001', 'Ospen',                'Box',    'Caps', 20,   78, 10.50, 1.0, 0.00, 10),
+                    (12, '300 00002', 'Amopen',               'Box',    'Caps', 30,   90, 15.00, 1.0, 0.00, 15),
+                    (13, '400 00001', 'Vitamin C',            'Box',    'Caps', 30,   22,  1.20, 1.0, 0.00, 15),
+                    (14, '400 00002', 'Vitamin B12',          'Box',    'Caps', 30,   43,  1.30, 1.0, 0.00, 15)
             """);
 
             // database for the templates

@@ -53,7 +53,7 @@ public class AccountServiceTest {
 
     // helper to build a customer quickly
     Customer buildCustomer(AccountStatus status, double limit, double balance, double spend, DiscountType dtype, double rate) {
-        return new Customer(1, "Test Person", "123 Fake St", "CSM000001",
+        return new Customer(1, "Test Person", "Test Person", "", "123 Fake St", "ACC0001",
             limit, balance, spend, dtype, rate, status,
             "no_need", "no_need", null, null, null);
     }
@@ -116,23 +116,23 @@ public class AccountServiceTest {
 
     @Test
     void testFlexibleDiscount_highSpend() {
-        // over £100 spend = 5% discount
-        Customer c = buildCustomer(AccountStatus.NORMAL, 500, 0, 150, DiscountType.FLEXIBLE, 0);
-        assertEquals(7.50, accountService.calculateFlexibleMonthEndDiscount(c), 0.001);
+        // £300+ spend = 2% discount
+        Customer c = buildCustomer(AccountStatus.NORMAL, 500, 0, 350, DiscountType.FLEXIBLE, 0);
+        assertEquals(7.00, accountService.calculateFlexibleMonthEndDiscount(c), 0.001);
     }
 
     @Test
     void testFlexibleDiscount_midSpend() {
-        // between 50-100 = 3%
-        Customer c = buildCustomer(AccountStatus.NORMAL, 500, 0, 75, DiscountType.FLEXIBLE, 0);
-        assertEquals(2.25, accountService.calculateFlexibleMonthEndDiscount(c), 0.001);
+        // £100-£300 spend = 1%
+        Customer c = buildCustomer(AccountStatus.NORMAL, 500, 0, 150, DiscountType.FLEXIBLE, 0);
+        assertEquals(1.50, accountService.calculateFlexibleMonthEndDiscount(c), 0.001);
     }
 
     @Test
     void testFlexibleDiscount_lowSpend() {
-        // under 50 = 1%
-        Customer c = buildCustomer(AccountStatus.NORMAL, 500, 0, 30, DiscountType.FLEXIBLE, 0);
-        assertEquals(0.30, accountService.calculateFlexibleMonthEndDiscount(c), 0.001);
+        // under £100 = 0%
+        Customer c = buildCustomer(AccountStatus.NORMAL, 500, 0, 75, DiscountType.FLEXIBLE, 0);
+        assertEquals(0.0, accountService.calculateFlexibleMonthEndDiscount(c), 0.001);
     }
 
     @Test

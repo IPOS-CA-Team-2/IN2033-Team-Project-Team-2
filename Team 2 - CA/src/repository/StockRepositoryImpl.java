@@ -18,7 +18,11 @@ public class StockRepositoryImpl implements StockRepository {
     private StockItem mapRow(ResultSet rs) throws SQLException {
         return new StockItem(
                 rs.getInt("id"),
+                rs.getString("item_code"),
                 rs.getString("name"),
+                rs.getString("package_type"),
+                rs.getString("unit"),
+                rs.getInt("units_per_pack"),
                 rs.getInt("quantity"),
                 rs.getDouble("bulk_cost"),
                 rs.getDouble("markup_rate"),
@@ -27,9 +31,12 @@ public class StockRepositoryImpl implements StockRepository {
         );
     }
 
+    private static final String SELECT_COLS =
+        "id, item_code, name, package_type, unit, units_per_pack, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold";
+
     @Override
     public List<StockItem> findAll() {
-        String sql = "SELECT id, name, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold FROM stock ORDER BY name";
+        String sql = "SELECT " + SELECT_COLS + " FROM stock ORDER BY id";
         List<StockItem> items = new ArrayList<>();
 
         try (Connection conn = DatabaseManager.getConnection();
@@ -48,7 +55,7 @@ public class StockRepositoryImpl implements StockRepository {
 
     @Override
     public StockItem findById(int itemId) {
-        String sql = "SELECT id, name, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold FROM stock WHERE id = ?";
+        String sql = "SELECT " + SELECT_COLS + " FROM stock WHERE id = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -88,8 +95,8 @@ public class StockRepositoryImpl implements StockRepository {
 
     @Override
     public List<StockItem> findLowStock() {
-        String sql = "SELECT id, name, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold " +
-                     "FROM stock WHERE quantity <= low_stock_threshold ORDER BY quantity ASC";
+        String sql = "SELECT " + SELECT_COLS +
+                     " FROM stock WHERE quantity <= low_stock_threshold ORDER BY quantity ASC";
         List<StockItem> items = new ArrayList<>();
 
         try (Connection conn = DatabaseManager.getConnection();
@@ -111,8 +118,9 @@ public class StockRepositoryImpl implements StockRepository {
         if (item == null) return false;
 
         // insert or replace — handles both new items and updates
-        String sql = "INSERT OR REPLACE INTO stock (id, name, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT OR REPLACE INTO stock " +
+                     "(id, item_code, name, package_type, unit, units_per_pack, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -123,12 +131,16 @@ public class StockRepositoryImpl implements StockRepository {
             } else {
                 stmt.setInt(1, item.getItemId());
             }
-            stmt.setString(2, item.getName());
-            stmt.setInt(3, item.getQuantity());
-            stmt.setDouble(4, item.getBulkCost());
-            stmt.setDouble(5, item.getMarkupRate());
-            stmt.setDouble(6, item.getVatRate());
-            stmt.setInt(7, item.getLowStockThreshold());
+            stmt.setString(2, item.getItemCode());
+            stmt.setString(3, item.getName());
+            stmt.setString(4, item.getPackageType());
+            stmt.setString(5, item.getUnit());
+            stmt.setInt(6, item.getUnitsPerPack());
+            stmt.setInt(7, item.getQuantity());
+            stmt.setDouble(8, item.getBulkCost());
+            stmt.setDouble(9, item.getMarkupRate());
+            stmt.setDouble(10, item.getVatRate());
+            stmt.setInt(11, item.getLowStockThreshold());
 
             return stmt.executeUpdate() > 0;
 

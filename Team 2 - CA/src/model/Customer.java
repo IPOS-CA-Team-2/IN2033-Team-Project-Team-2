@@ -8,8 +8,10 @@ public class Customer {
 
     private final int customerId;
     private final String name;
+    private final String contactName;     // contact person (may differ from account holder name)
+    private final String phone;
     private final String address;
-    private final String accountNumber;   // e.g. CSM000123 — used to identify at till
+    private final String accountNumber;   // e.g. ACC0001 — used to identify at till
     private final double creditLimit;     // max outstanding balance allowed
     private final double currentBalance;  // current unpaid debt
     private final double monthlySpend;    // total spend this calendar month (for flexible discount)
@@ -24,7 +26,8 @@ public class Customer {
     private final LocalDate date2ndReminder;
     private final LocalDate statementDate;    // end of the month the debt was incurred
 
-    public Customer(int customerId, String name, String address, String accountNumber,
+    public Customer(int customerId, String name, String contactName, String phone, String address,
+                    String accountNumber,
                     double creditLimit, double currentBalance, double monthlySpend,
                     DiscountType discountType, double fixedDiscountRate,
                     AccountStatus status, String status1stReminder, String status2ndReminder,
@@ -37,6 +40,8 @@ public class Customer {
 
         this.customerId = customerId;
         this.name = name;
+        this.contactName = contactName != null ? contactName : "";
+        this.phone = phone != null ? phone : "";
         this.address = address;
         this.accountNumber = accountNumber;
         this.creditLimit = creditLimit;
@@ -53,15 +58,18 @@ public class Customer {
     }
 
     // convenience constructor for creating a new account holder with defaults
-    public Customer(String name, String address, String accountNumber,
-                    double creditLimit, DiscountType discountType, double fixedDiscountRate) {
-        this(0, name, address, accountNumber, creditLimit, 0.0, 0.0,
+    public Customer(String name, String contactName, String phone, String address,
+                    String accountNumber, double creditLimit,
+                    DiscountType discountType, double fixedDiscountRate) {
+        this(0, name, contactName, phone, address, accountNumber, creditLimit, 0.0, 0.0,
              discountType, fixedDiscountRate, AccountStatus.NORMAL,
              "no_need", "no_need", null, null, null);
     }
 
     public int getCustomerId()          { return customerId; }
     public String getName()             { return name; }
+    public String getContactName()      { return contactName; }
+    public String getPhone()            { return phone; }
     public String getAddress()          { return address; }
     public String getAccountNumber()    { return accountNumber; }
     public double getCreditLimit()      { return creditLimit; }

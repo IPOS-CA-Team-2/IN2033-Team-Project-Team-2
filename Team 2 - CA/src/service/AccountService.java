@@ -31,19 +31,19 @@ public class AccountService {
         return 0.0;
     }
 
-    // month end flexible discount — tiers based on total spend that month
-    // TODO: confirm these thresholds with the brief again before demo
+    // month end flexible discount — tiers based on total monthly spend (per spec)
+    // < £100 → 0%,  £100–£300 → 1%,  £300+ → 2%
     public double calculateFlexibleMonthEndDiscount(Customer customer) {
         if (customer.getDiscountType() != DiscountType.FLEXIBLE) return 0.0;
 
         double spend = customer.getMonthlySpend();
         double rate;
-        if (spend > 100) {
-            rate = 0.05;
-        } else if (spend >= 50) {
-            rate = 0.03;
-        } else {
+        if (spend >= 300) {
+            rate = 0.02;
+        } else if (spend >= 100) {
             rate = 0.01;
+        } else {
+            rate = 0.0;
         }
 
         return spend * rate;

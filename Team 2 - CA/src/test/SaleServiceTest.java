@@ -195,7 +195,7 @@ public class SaleServiceTest {
     @Test
     void testFixedDiscountApplied() throws SaleException {
         // 10% fixed discount on £12 = £1.20 off so total should be £10.80
-        Customer c = new Customer(1, "Test User", "123 St", "CSM000001", 500.0, 0.0, 0.0,
+        Customer c = new Customer(1, "Test User", "Test User", "", "123 St", "ACC0001", 500.0, 0.0, 0.0,
             DiscountType.FIXED, 0.10, AccountStatus.NORMAL, "no_need", "no_need", null, null, null);
         Receipt r = serviceWithAccount.processSaleForAccount(c, makeLine(1, 10), PaymentMethod.CASH, null, "Alice");
         assertEquals(10.80, r.getSale().getTotal(), 0.01);
@@ -210,7 +210,7 @@ public class SaleServiceTest {
 
     // helper
     Customer makeCustomer(AccountStatus status, double limit, double balance) {
-        return new Customer(1, "Test Customer", "1 Test St", "CSM000001", limit, balance, 0.0,
+        return new Customer(1, "Test Customer", "Test Customer", "", "1 Test St", "ACC0001", limit, balance, 0.0,
             DiscountType.NONE, 0.0, status, "no_need", "no_need", null, null, null);
     }
 }
