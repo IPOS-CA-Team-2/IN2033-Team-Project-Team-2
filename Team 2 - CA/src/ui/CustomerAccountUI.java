@@ -10,6 +10,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
 
 // account holder management screen
@@ -243,17 +244,20 @@ public class CustomerAccountUI extends JPanel {
         panel.add(refreshBtn);
 
         if ("Manager".equals(currentUser.getRole())) {
-            JButton generateBtn = UITheme.primaryBtn("Generate Reminders");
+            JButton generateBtn   = UITheme.primaryBtn("Generate Reminders");
             JButton statementsBtn = UITheme.primaryBtn("Generate Statements");
+            JButton discountBtn   = UITheme.primaryBtn("Apply Month-End Discounts");
             restoreBtn = UITheme.dangerBtn("Restore Account");
             restoreBtn.setEnabled(false);
 
             generateBtn.addActionListener(e -> handleGenerateReminders());
             statementsBtn.addActionListener(e -> handleGenerateStatements());
+            discountBtn.addActionListener(e -> handleApplyMonthEndDiscounts());
             restoreBtn.addActionListener(e -> handleRestoreAccount());
 
             panel.add(generateBtn);
             panel.add(statementsBtn);
+            panel.add(discountBtn);
             panel.add(restoreBtn);
         }
 
@@ -496,6 +500,57 @@ public class CustomerAccountUI extends JPanel {
             JOptionPane.showMessageDialog(this, "Failed to restore account.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+    // apply end-of-month flexible discounts to all eligible account holders (manager only)
+    // finds every customer on a flexible discount plan, calculates their tier discount
+    // based on total monthly spend, deducts it from their outstanding balance, and resets
+    // their monthly spend counter to zero ready for the new month
+    private void handleApplyMonthEndDiscounts() {
+        List<Customer> all = customerRepo.findAll();
+        List<Customer> eligible = new ArrayList<>();
+        for (Customer c : all) {
+            if (c.getDiscountType() == DiscountType.FLEXIBLE && c.getMonthlySpend() > 0) {
+                eligible.add(c);
+            }
+        }
+
+        if (eligible.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                "No account holders on a flexible discount plan have any monthly spend to process.",
+                "Month-End Discounts", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // confirm before applying
+        StringBuilder preview = new StringBuilder();
+        preview.append("The following discounts will be applied:\n\n");
+        double totalDiscount = 0;
+        for (Customer c : eligible) {
+            double discount = accountService.calculateFlexibleMonthEndDiscount(c);
+            totalDiscount += discount;
+            preview.append(String.format("• %s (%s)  spend: £%.2f  →  discount: £%.2f%n",
+                c.getName(), c.getAccountNumber(), c.getMonthlySpend(), discount));
+        }
+        preview.append(String.format("%nTotal discount to apply: £%.2f%n", totalDiscount));
+        preview.append("\nApply now and reset monthly spend counters?");
+
+        int confirm = JOptionPane.showConfirmDialog(this, preview.toString(),
+            "Confirm Month-End Discounts", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        int applied = 0;
+        for (Customer c : eligible) {
+            if (accountService.applyFlexibleDiscount(c)) applied++;
+        }
+
+        loadCustomerData(null);
+        JOptionPane.showMessageDialog(this,
+            applied + " account holder(s) processed.\n" +
+            String.format("Total discount applied: £%.2f\n", totalDiscount) +
+            "Monthly spend counters have been reset to zero.",
+            "Month-End Discounts Applied", JOptionPane.INFORMATION_MESSAGE);
+    }
+
     private void handleGenerateStatements() {
         List<String[]> statements = reminderService.generateMonthlyStatements();
 
