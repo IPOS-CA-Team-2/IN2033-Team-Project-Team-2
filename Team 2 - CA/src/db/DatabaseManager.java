@@ -206,6 +206,12 @@ public class DatabaseManager {
             try { stmt.execute("ALTER TABLE wholesale_orders ADD COLUMN sa_order_id INTEGER NOT NULL DEFAULT 0"); }
             catch (SQLException ignored) { /* column already present — safe to skip */ }
 
+            // migration: add online order lifecycle columns to existing installations
+            try { stmt.execute("ALTER TABLE online_sales ADD COLUMN delivery_address TEXT NOT NULL DEFAULT ''"); }
+            catch (SQLException ignored) { /* already present */ }
+            try { stmt.execute("ALTER TABLE online_sales ADD COLUMN status TEXT NOT NULL DEFAULT 'RECEIVED'"); }
+            catch (SQLException ignored) { /* already present */ }
+
             // migration: add new stock columns to existing installations
             try { stmt.execute("ALTER TABLE stock ADD COLUMN item_code TEXT NOT NULL DEFAULT ''"); }
             catch (SQLException ignored) { /* already present */ }

@@ -1,5 +1,6 @@
 package service;
 
+import app.AppContext;
 import exception.StockException;
 import model.StockItem;
 import repository.StockRepository;
@@ -72,7 +73,7 @@ public class StockService {
         return items != null ? items : Collections.emptyList();
     }
 
-    // add a brand new item to the catalogue
+    // add a brand new item to the catalogue and notify PU so it appears online
     public void addStockItem(StockItem item) throws StockException {
         if (item == null) {
             throw new StockException(
@@ -81,14 +82,19 @@ public class StockService {
             );
         }
         stockRepository.save(item);
+        if (AppContext.getPuAdapter() != null) {
+            AppContext.getPuAdapter().notifyStockUpdated(item);
+        }
     }
 
-    // removes item from catalogue — checks it exists first
-    // TODO: should probably warn if there are pending orders for this item
+    // removes item from catalogue and notifies PU so it disappears from the online shop
     public void removeStockItem(int itemId) throws StockException {
         validateItemId(itemId);
-        getStockItem(itemId);
+        getStockItem(itemId); // confirms item exists before deletion
         stockRepository.delete(itemId);
+        if (AppContext.getPuAdapter() != null) {
+            AppContext.getPuAdapter().notifyProductDeleted(itemId);
+        }
     }
 
     // -- private helpers --

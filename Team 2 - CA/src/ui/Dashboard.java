@@ -88,21 +88,18 @@ public class Dashboard extends JPanel {
     }
 
     private void buildPharmacistMenu(JTabbedPane tabs) {
-        // converted to tabs -done
         tabs.addTab("Process Sale", new ProcessSaleUI(currentUser));
         tabs.addTab("Maintain Local Stock", new StockManagementUI());
         tabs.addTab("Customer Accounts", new CustomerAccountUI(currentUser));
         tabs.addTab("Wholesale Orders", new WholesaleOrderUI(currentUser));
-
+        tabs.addTab("Online Orders", new OnlineOrdersUI(currentUser));
     }
 
     private void buildManagerMenu(JTabbedPane tabs) {
-        // converted tyo tabs -done
-        // converted to one singular tab for all 3 reports as there are sub tabs contained within
         tabs.addTab("View Reports", new ReportsUI(currentUser, 0));
         tabs.addTab("Customer Accounts", new CustomerAccountUI(currentUser));
         tabs.addTab("Place Wholesale Order", new WholesaleOrderUI(currentUser));
+        tabs.addTab("Online Orders", new OnlineOrdersUI(currentUser));
         tabs.addTab("Templates", new TemplatesUI());
-
     }
 }

@@ -291,6 +291,14 @@ public class StockManagementUI extends JPanel {
             loadStockData();
             JOptionPane.showMessageDialog(this, name + " updated successfully.", "Updated", JOptionPane.INFORMATION_MESSAGE);
 
+            // notify PU so the online catalogue reflects the updated name/price
+            try {
+                if (AppContext.getPuAdapter() != null) {
+                    StockItem updated = AppContext.getStockService().getStockItem(itemId);
+                    AppContext.getPuAdapter().notifyStockUpdated(updated);
+                }
+            } catch (Exception ignored) {}
+
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Please check your inputs — numbers only for units per pack, cost, and threshold.", "Invalid Input", JOptionPane.ERROR_MESSAGE);
         }

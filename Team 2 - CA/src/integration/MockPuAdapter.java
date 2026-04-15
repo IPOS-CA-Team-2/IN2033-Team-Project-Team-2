@@ -1,16 +1,11 @@
 package integration;
 
-import db.DatabaseManager;
+import model.CardDetails;
 import model.OnlineSale;
 import model.OnlineSaleItem;
+import model.StockItem;
 import service.OnlineSaleService;
-import model.CardDetails;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -29,10 +24,8 @@ public class MockPuAdapter implements IPuStockUpdater {
 
     @Override
     public boolean applyOnlineSale(OnlineSale sale) {
-        boolean result = onlineSaleService.processOnlineSale(sale);
-        // persist a record of the online sale event for audit/reporting
-        logOnlineSale(sale, result);
-        return result;
+        // processOnlineSale handles both stock deduction and persistence
+        return onlineSaleService.processOnlineSale(sale);
     }
 
     // convenience method for demo — generates a fake pu order id and wraps the items
@@ -54,47 +47,19 @@ public class MockPuAdapter implements IPuStockUpdater {
         return new CardClearanceResult(true, txRef, "Payment approved");
     }
 
-    // log the incoming sale to the online_sales and online_sale_items tables
-    private void logOnlineSale(OnlineSale sale, boolean fullyApplied) {
-        String saleSql = """
-            INSERT INTO online_sales (pu_order_id, received_date, customer_email, fully_applied)
-            VALUES (?, ?, ?, ?)
-        """;
-        String itemSql = """
-            INSERT INTO online_sale_items (online_sale_id, item_id, quantity)
-            VALUES (?, ?, ?)
-        """;
-
-        try (Connection conn = DatabaseManager.getConnection()) {
-            conn.setAutoCommit(false);
-
-            int saleId;
-            try (PreparedStatement stmt = conn.prepareStatement(saleSql, Statement.RETURN_GENERATED_KEYS)) {
-                stmt.setString(1, sale.getPuOrderId());
-                stmt.setString(2, sale.getReceivedDate().toString());
-                stmt.setString(3, sale.getCustomerEmail());
-                stmt.setInt(4, fullyApplied ? 1 : 0);
-                stmt.executeUpdate();
-                ResultSet keys = stmt.getGeneratedKeys();
-                saleId = keys.next() ? keys.getInt(1) : -1;
-            }
-
-            if (saleId > 0) {
-                try (PreparedStatement itemStmt = conn.prepareStatement(itemSql)) {
-                    for (OnlineSaleItem item : sale.getItems()) {
-                        itemStmt.setInt(1, saleId);
-                        itemStmt.setInt(2, item.getItemId());
-                        itemStmt.setInt(3, item.getQuantity());
-                        itemStmt.addBatch();
-                    }
-                    itemStmt.executeBatch();
-                }
-            }
-
-            conn.commit();
-
-        } catch (SQLException e) {
-            System.err.println("db error logging online sale: " + e.getMessage());
-        }
+    @Override
+    public void notifyProductDeleted(int caItemId) {
+        System.out.println("[MockPuAdapter] notifyProductDeleted caItemId=" + caItemId + " (no-op in mock mode)");
     }
+
+    @Override
+    public void notifyStockUpdated(StockItem item) {
+        System.out.println("[MockPuAdapter] notifyStockUpdated caItemId=" + item.getItemId() + " (no-op in mock mode)");
+    }
+
+    @Override
+    public void notifyOrderStatusUpdate(String puOrderId, String caStatus) {
+        System.out.println("[MockPuAdapter] notifyOrderStatusUpdate " + puOrderId + " -> " + caStatus + " (no-op in mock mode)");
+    }
+
 }
