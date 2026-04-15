@@ -247,18 +247,27 @@ public class CustomerAccountUI extends JPanel {
             JButton generateBtn   = UITheme.primaryBtn("Generate Reminders");
             JButton statementsBtn = UITheme.primaryBtn("Generate Statements");
             JButton discountBtn   = UITheme.primaryBtn("Apply Month-End Discounts");
+            JButton deleteBtn     = UITheme.dangerBtn("Delete Account");
             restoreBtn = UITheme.dangerBtn("Restore Account");
             restoreBtn.setEnabled(false);
 
             generateBtn.addActionListener(e -> handleGenerateReminders());
             statementsBtn.addActionListener(e -> handleGenerateStatements());
             discountBtn.addActionListener(e -> handleApplyMonthEndDiscounts());
+            deleteBtn.addActionListener(e -> handleDeleteCustomer());
             restoreBtn.addActionListener(e -> handleRestoreAccount());
 
             panel.add(generateBtn);
             panel.add(statementsBtn);
             panel.add(discountBtn);
+            panel.add(deleteBtn);
             panel.add(restoreBtn);
+        }
+
+        if ("Admin".equals(currentUser.getRole())) {
+            JButton deleteBtn = UITheme.dangerBtn("Delete Account");
+            deleteBtn.addActionListener(e -> handleDeleteCustomer());
+            panel.add(deleteBtn);
         }
 
         JLabel searchFilters = new JLabel("command followed by  \": \"        |        Search commands: id, account, name, balance, limit, status, 1streminder, 2ndreminder");
@@ -484,6 +493,40 @@ public class CustomerAccountUI extends JPanel {
         }
 
         loadCustomerData(null);
+    }
+
+    // permanently delete an account holder — manager only, requires confirmation
+    private void handleDeleteCustomer() {
+        Customer c = getSelectedCustomer();
+        if (c == null) return;
+
+        // block deletion if the account has an outstanding balance
+        if (c.getCurrentBalance() > 0.01) {
+            JOptionPane.showMessageDialog(this,
+                "Cannot delete " + c.getName() + " — outstanding balance of £"
+                + String.format("%.2f", c.getCurrentBalance()) + " must be cleared first.",
+                "Outstanding Balance", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "Permanently delete account holder:\n\n"
+            + "  " + c.getName() + "  (" + c.getAccountNumber() + ")\n\n"
+            + "This cannot be undone.",
+            "Confirm Delete Account",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE);
+
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        if (customerRepo.delete(c.getCustomerId())) {
+            loadCustomerData(null);
+            JOptionPane.showMessageDialog(this,
+                c.getName() + " (" + c.getAccountNumber() + ") has been deleted.",
+                "Account Deleted", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this, "Failed to delete account.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     // restore a selected IN_DEFAULT account to normal after manager confirmation
