@@ -141,6 +141,48 @@ public class ReportService {
         return new TurnoverReport(from, to, saleCount, totalRevenue, cashCount, cardCount, orderCount, orderTotal, rows);
     }
 
+    public static class LowStockRow {
+        public final String itemCode;
+        public final String name;
+        public final String packageType;
+        public final String unit;
+        public final int    quantity;
+        public final int    threshold;
+
+        LowStockRow(String itemCode, String name, String packageType, String unit, int quantity, int threshold) {
+            this.itemCode = itemCode; this.name = name; this.packageType = packageType;
+            this.unit = unit; this.quantity = quantity; this.threshold = threshold;
+        }
+    }
+
+    public static class LowStockReport {
+        public final LocalDate generatedAt;
+        public final int lowStockCount;
+        public final List<LowStockRow> rows;
+
+        LowStockReport(LocalDate generatedAt, int lowStockCount, List<LowStockRow> rows) {
+            this.generatedAt = generatedAt; this.lowStockCount = lowStockCount; this.rows = rows;
+        }
+    }
+
+    // returns only items that are at or below their stock threshold
+    public LowStockReport generateLowStockReport() {
+        List<StockItem>    items = stockService.getAllStock();
+        List<LowStockRow>  rows  = new ArrayList<>();
+
+        for (StockItem item : items) {
+            if (item.isLowStock()) {
+                rows.add(new LowStockRow(
+                    item.getItemCode(), item.getName(),
+                    item.getPackageType(), item.getUnit(),
+                    item.getQuantity(), item.getLowStockThreshold()
+                ));
+            }
+        }
+
+        return new LowStockReport(LocalDate.now(), rows.size(), rows);
+    }
+
     // stock report is always current — no date range
     public StockReport generateStockReport() {
         List<StockItem> items = stockService.getAllStock();

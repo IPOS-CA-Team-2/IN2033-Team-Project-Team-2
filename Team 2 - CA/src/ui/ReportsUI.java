@@ -209,12 +209,16 @@ public class ReportsUI extends JPanel {
         panel.setOpaque(false);
         panel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
 
-        JButton refreshBtn = UITheme.secondaryBtn("Refresh");
+        JButton refreshBtn   = UITheme.secondaryBtn("Refresh");
         refreshBtn.addActionListener(e -> refreshStock());
+
+        JButton lowStockBtn = UITheme.primaryBtn("Low Stock Report");
+        lowStockBtn.addActionListener(e -> showLowStockReport());
 
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
         controls.setOpaque(false);
         controls.add(refreshBtn);
+        controls.add(lowStockBtn);
         controls.add(new JLabel("  Stock values are current as of now."));
 
         String[] cols = {"Item", "Qty", "Unit Price (inc VAT)", "Stock Value (£)", "Status"};
@@ -352,6 +356,89 @@ public class ReportsUI extends JPanel {
             "  Total outstanding debt: £%.2f  |  %d account holder(s) in arrears  |  Snapshot: %s",
             r.totalDebt, r.debtorCount, r.generatedAt
         ));
+    }
+
+    // opens a modal dialog listing every item that is at or below its stock threshold
+    private void showLowStockReport() {
+        ReportService.LowStockReport report = reportService.generateLowStockReport();
+
+        // build the dialog
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        JDialog dialog = (owner instanceof Frame)
+            ? new JDialog((Frame) owner, "Low Stock Report", true)
+            : new JDialog((Dialog) owner, "Low Stock Report", true);
+        dialog.setSize(780, 460);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout(0, 0));
+
+        // header
+        JLabel header = new JLabel(
+            "  Items Below Stock Threshold  —  " + report.lowStockCount + " item(s) require attention",
+            SwingConstants.LEFT);
+        header.setFont(UITheme.FONT_BOLD);
+        header.setOpaque(true);
+        header.setBackground(UITheme.PRIMARY);
+        header.setForeground(Color.WHITE);
+        header.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
+        dialog.add(header, BorderLayout.NORTH);
+
+        // table
+        String[] cols = {"Item Code", "Description", "Package Type", "Unit", "Current Stock (packs)", "Min Threshold (packs)"};
+        DefaultTableModel model = new DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+
+        Color LOW_RED = new Color(255, 210, 210);
+        JTable table = new JTable(model);
+        UITheme.styleTable(table);
+        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int col) {
+                Component c = super.getTableCellRendererComponent(t, value, isSelected, hasFocus, row, col);
+                if (!isSelected) {
+                    c.setBackground(row % 2 == 0 ? LOW_RED : new Color(255, 230, 230));
+                    c.setForeground(Color.BLACK);
+                }
+                return c;
+            }
+        });
+        table.getColumnModel().getColumn(0).setMaxWidth(100);
+        table.getColumnModel().getColumn(4).setMaxWidth(170);
+        table.getColumnModel().getColumn(5).setMaxWidth(170);
+
+        if (report.rows.isEmpty()) {
+            model.addRow(new Object[]{"—", "All items are above their stock thresholds", "", "", "", ""});
+        } else {
+            for (ReportService.LowStockRow row : report.rows) {
+                model.addRow(new Object[]{
+                    row.itemCode.isBlank() ? "—" : row.itemCode,
+                    row.name,
+                    row.packageType.isBlank() ? "—" : row.packageType,
+                    row.unit.isBlank()        ? "—" : row.unit,
+                    row.quantity,
+                    row.threshold
+                });
+            }
+        }
+
+        dialog.add(new JScrollPane(table), BorderLayout.CENTER);
+
+        // footer buttons
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
+        footer.setOpaque(false);
+
+        JButton printBtn = UITheme.secondaryBtn("Print / Save PDF");
+        printBtn.addActionListener(e -> printTable(table, "Low Stock Report — " + report.generatedAt));
+
+        JButton closeBtn = UITheme.primaryBtn("Close");
+        closeBtn.addActionListener(e -> dialog.dispose());
+
+        footer.add(printBtn);
+        footer.add(closeBtn);
+        dialog.add(footer, BorderLayout.SOUTH);
+
+        dialog.setVisible(true);
     }
 
     // ---- helpers ----
