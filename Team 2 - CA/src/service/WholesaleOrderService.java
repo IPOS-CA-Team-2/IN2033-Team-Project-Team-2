@@ -64,7 +64,10 @@ public class WholesaleOrderService {
     // called by CaApiServer when sa pushes an order status update to /order-update
     // finds the local order by the sa-assigned id and updates its status
     // if the new status is DELIVERED, stock is increased automatically
-    public void receiveStatusUpdate(int saOrderId, OrderStatus newStatus) {
+    // shipping details are forwarded to the repo for DISPATCHED status
+    public void receiveStatusUpdate(int saOrderId, OrderStatus newStatus,
+                                    String courierName, String courierRef,
+                                    LocalDate dispatchDate, LocalDate expectedDelivery) {
         WholesaleOrder order = repo.findBySaOrderId(saOrderId);
         if (order == null) {
             System.err.println("[WholesaleOrderService] No local order found for SA id=" + saOrderId);
@@ -74,10 +77,15 @@ public class WholesaleOrderService {
         if (newStatus == OrderStatus.DELIVERED) {
             markDelivered(order.getOrderId());
         } else {
-            repo.updateStatus(order.getOrderId(), newStatus, null, null, null, null);
+            repo.updateStatus(order.getOrderId(), newStatus, courierName, courierRef, dispatchDate, expectedDelivery);
         }
 
         System.out.println("[WholesaleOrderService] Status updated for SA id=" + saOrderId + " → " + newStatus);
+    }
+
+    // convenience overload for callers that don't have shipping details (e.g. mock/test)
+    public void receiveStatusUpdate(int saOrderId, OrderStatus newStatus) {
+        receiveStatusUpdate(saOrderId, newStatus, null, null, null, null);
     }
 
     // simulate sa progressing an order's status (for demo without real sa)
@@ -86,5 +94,18 @@ public class WholesaleOrderService {
                                         String courier, String courierRef,
                                         LocalDate dispatchDate, LocalDate expectedDelivery) {
         return gateway.updateOrderStatus(orderId, status, courier, courierRef, dispatchDate, expectedDelivery);
+    }
+
+    // fetch invoice from SA for a given SA order id — returns null if SA unreachable
+    // keys: invoiceNumber, issuedAt, dueDate, grossTotal, fixedDiscountAmount,
+    //       flexibleCreditApplied, totalDue, lines (List<Map>)
+    public java.util.Map<String, Object> getInvoice(int saOrderId) {
+        return gateway.getInvoiceByOrderId(saOrderId);
+    }
+
+    // query outstanding balance for the CA merchant account at SA — returns null if SA unreachable
+    // keys: outstandingTotal, currency, oldestUnpaidDueDate, daysElapsedSinceDue
+    public java.util.Map<String, Object> getOutstandingBalance() {
+        return gateway.getOutstandingBalance();
     }
 }

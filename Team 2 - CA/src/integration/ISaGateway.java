@@ -6,6 +6,7 @@ import model.WholesaleOrder;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 // the interface through which ipos-ca communicates with ipos-sa (infopharma wholesale)
 // currently backed by MockSaGateway (local sqlite)
@@ -26,4 +27,13 @@ public interface ISaGateway {
     boolean updateOrderStatus(int orderId, OrderStatus status,
                               String courier, String courierRef,
                               LocalDate dispatchDate, LocalDate expectedDelivery);
+
+    // fetch the invoice linked to a specific SA order — returns null if SA is unreachable
+    // keys: invoiceNumber, issuedAt, dueDate, grossTotal, fixedDiscountAmount,
+    //       flexibleCreditApplied, totalDue, lines (List<Map>)
+    Map<String, Object> getInvoiceByOrderId(int saOrderId);
+
+    // query the merchant's outstanding balance from SA — returns null if SA is unreachable
+    // keys: outstandingTotal, currency, oldestUnpaidDueDate, daysElapsedSinceDue
+    Map<String, Object> getOutstandingBalance();
 }
