@@ -78,20 +78,27 @@ public class CaApiServer {
     }
 
     // POST /order-update — SA calls this when an order status changes
-    // expected body: { "orderId": <SA_ORDER_ID>, "status": "CONFIRMED" }
+    // body for most statuses: { "orderId": <SA_ORDER_ID>, "status": "ACCEPTED" }
+    // body for DISPATCHED also includes: courierName, courierReference, dispatchDate, expectedDeliveryDate
     private void handleOrderUpdate(HttpExchange exchange) throws IOException {
         if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
             exchange.sendResponseHeaders(405, -1);
             return;
         }
         try {
-            JsonObject json     = JsonParser.parseString(readBody(exchange)).getAsJsonObject();
-            int        saId     = json.get("orderId").getAsInt();
-            String     statusStr = json.get("status").getAsString();
+            JsonObject  json      = JsonParser.parseString(readBody(exchange)).getAsJsonObject();
+            int         saId      = json.get("orderId").getAsInt();
+            String      statusStr = json.get("status").getAsString();
+
+            // parse optional shipping fields — only present when status = DISPATCHED
+            String    courierName  = json.has("courierName")          ? json.get("courierName").getAsString()          : null;
+            String    courierRef   = json.has("courierReference")      ? json.get("courierReference").getAsString()      : null;
+            LocalDate dispatchDate = json.has("dispatchDate")          ? LocalDate.parse(json.get("dispatchDate").getAsString())         : null;
+            LocalDate expectedDel  = json.has("expectedDeliveryDate")  ? LocalDate.parse(json.get("expectedDeliveryDate").getAsString())  : null;
 
             OrderStatus status = mapSaStatus(statusStr);
             if (status != null) {
-                orderService.receiveStatusUpdate(saId, status);
+                orderService.receiveStatusUpdate(saId, status, courierName, courierRef, dispatchDate, expectedDel);
                 SwingUtilities.invokeLater(onOrderUpdated);
             }
 
@@ -163,11 +170,14 @@ public class CaApiServer {
     }
 
     // maps sa status strings to ca's OrderStatus enum
-    // sa uses CONFIRMED where ca uses ACCEPTED — everything else aligns directly
+    // sa sends ACCEPTED (not CONFIRMED) for newly placed orders — both mapped for safety
+    // sa sends PROCESSING for picking/packing — maps to BEING_PROCESSED on ca side
     private OrderStatus mapSaStatus(String saStatus) {
         return switch (saStatus.toUpperCase()) {
             case "PENDING"    -> OrderStatus.PENDING;
-            case "CONFIRMED"  -> OrderStatus.ACCEPTED;
+            case "CONFIRMED"  -> OrderStatus.ACCEPTED;       // legacy — kept for safety
+            case "ACCEPTED"   -> OrderStatus.ACCEPTED;       // sa's actual status for new orders
+            case "PROCESSING" -> OrderStatus.BEING_PROCESSED; // sa picking/packing
             case "DISPATCHED" -> OrderStatus.DISPATCHED;
             case "DELIVERED"  -> OrderStatus.DELIVERED;
             case "CANCELLED"  -> OrderStatus.CANCELLED;

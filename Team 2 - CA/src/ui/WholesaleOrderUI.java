@@ -1,6 +1,7 @@
 package ui;
 
 import app.AppContext;
+import integration.ISaGateway;
 import integration.MockPuAdapter;
 import model.*;
 import service.WholesaleOrderService;
@@ -13,6 +14,7 @@ import java.awt.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 // wholesale order management screen
 // pharmacists and managers can place orders with infopharma (sa),
@@ -26,6 +28,8 @@ public class WholesaleOrderUI extends JPanel {
     private JTable            orderTable;
     private JButton           deliveredBtn;
     private JButton           statusBtn;
+    private JButton           invoiceBtn;
+    private JButton           balanceBtn;
 
     private static final int COL_ID       = 0;
     private static final int COL_DATE     = 1;
@@ -185,11 +189,15 @@ public class WholesaleOrderUI extends JPanel {
             if (row == -1) {
                 deliveredBtn.setEnabled(false);
                 statusBtn.setEnabled(false);
+                invoiceBtn.setEnabled(false);
                 return;
             }
             String status = (String) tableModel.getValueAt(row, COL_STATUS);
+            int orderId = (int) tableModel.getValueAt(row, COL_ID);
+            WholesaleOrder order = orderService.getOrder(orderId);
             deliveredBtn.setEnabled("DISPATCHED".equals(status));
             statusBtn.setEnabled(!"DELIVERED".equals(status) && !"CANCELLED".equals(status));
+            invoiceBtn.setEnabled(order != null && order.getSaOrderId() > 0);
         });
 
         JScrollPane scroll = new JScrollPane(orderTable);
@@ -208,15 +216,20 @@ public class WholesaleOrderUI extends JPanel {
         JButton placeBtn   = UITheme.successBtn("Place New Order");
         deliveredBtn       = UITheme.primaryBtn("Mark as Delivered");
         statusBtn          = UITheme.primaryBtn("Update Status");
+        invoiceBtn         = UITheme.secondaryBtn("View Invoice");
+        balanceBtn         = UITheme.secondaryBtn("Check Balance");
         JButton puSimBtn   = UITheme.secondaryBtn("Simulate PU Online Sale");
         JButton refreshBtn = UITheme.secondaryBtn("Refresh");
 
         deliveredBtn.setEnabled(false);
         statusBtn.setEnabled(false);
+        invoiceBtn.setEnabled(false);
 
         placeBtn.addActionListener(e -> handlePlaceOrder(placeBtn));
         deliveredBtn.addActionListener(e -> handleMarkDelivered());
         statusBtn.addActionListener(e -> handleUpdateStatus());
+        invoiceBtn.addActionListener(e -> handleViewInvoice());
+        balanceBtn.addActionListener(e -> handleCheckBalance());
         puSimBtn.addActionListener(e -> handleSimulatePuSale());
         refreshBtn.addActionListener(e -> loadOrders());
 
@@ -224,10 +237,11 @@ public class WholesaleOrderUI extends JPanel {
         searchFilters.setFont(UITheme.FONT_SMALL);
         searchFilters.setForeground(UITheme.SECONDARY);
 
-
         panel.add(placeBtn);
         panel.add(deliveredBtn);
         panel.add(statusBtn);
+        panel.add(invoiceBtn);
+        panel.add(balanceBtn);
         panel.add(puSimBtn);
         panel.add(refreshBtn);
         panel.add(searchFilters);
@@ -423,6 +437,210 @@ public class WholesaleOrderUI extends JPanel {
         loadOrders();
     }
 
+    // fetch invoice from SA for the selected order and display it in a scrollable dialog
+    // runs on a SwingWorker so the HTTP call never blocks the EDT
+    private void handleViewInvoice() {
+        int orderId = getSelectedOrderId();
+        if (orderId == -1) return;
+        WholesaleOrder order = orderService.getOrder(orderId);
+        if (order == null || order.getSaOrderId() <= 0) {
+            JOptionPane.showMessageDialog(this,
+                "This order has no SA Order ID — invoice unavailable.\n"
+                + "(SA must have received and confirmed the order first.)",
+                "No Invoice", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        invoiceBtn.setEnabled(false);
+        int saId = order.getSaOrderId();
+
+        new SwingWorker<java.util.Map<String, Object>, Void>() {
+            @Override
+            protected java.util.Map<String, Object> doInBackground() {
+                return orderService.getInvoice(saId);
+            }
+
+            @Override
+            protected void done() {
+                invoiceBtn.setEnabled(true);
+                java.util.Map<String, Object> inv;
+                try { inv = get(); } catch (Exception ex) { inv = null; }
+
+                if (inv == null) {
+                    JOptionPane.showMessageDialog(WholesaleOrderUI.this,
+                        "Could not retrieve invoice — SA may be offline or no invoice exists yet.",
+                        "Invoice Unavailable", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+
+                // build invoice dialog
+                JPanel dialog = new JPanel(new BorderLayout(0, 10));
+                dialog.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+
+                // header fields
+                JPanel meta = new JPanel(new java.awt.GridLayout(0, 2, 8, 4));
+                meta.setOpaque(false);
+                String[] metaKeys = {"Invoice #", "Issued", "Due Date"};
+                String[] metaVals = {
+                    String.valueOf(inv.getOrDefault("invoiceNumber", "—")),
+                    String.valueOf(inv.getOrDefault("issuedAt",      "—")),
+                    String.valueOf(inv.getOrDefault("dueDate",       "—"))
+                };
+                for (int i = 0; i < metaKeys.length; i++) {
+                    JLabel k = new JLabel(metaKeys[i] + ":"); k.setFont(UITheme.FONT_BOLD);
+                    JLabel v = new JLabel(metaVals[i]);
+                    meta.add(k); meta.add(v);
+                }
+
+                // overdue warning
+                String dueDateStr = String.valueOf(inv.getOrDefault("dueDate", ""));
+                if (!dueDateStr.equals("—") && !dueDateStr.isEmpty()) {
+                    try {
+                        LocalDate due = LocalDate.parse(dueDateStr);
+                        long daysOver = java.time.temporal.ChronoUnit.DAYS.between(due, LocalDate.now());
+                        if (daysOver > 30) {
+                            JLabel warn = new JLabel("⚠  Overdue by " + daysOver + " days — payment required immediately");
+                            warn.setForeground(new Color(200, 0, 0));
+                            warn.setFont(UITheme.FONT_BOLD);
+                            meta.add(warn); meta.add(new JLabel(""));
+                        } else if (daysOver > 0) {
+                            JLabel warn = new JLabel("⚠  Overdue by " + daysOver + " day(s)");
+                            warn.setForeground(new Color(200, 120, 0));
+                            warn.setFont(UITheme.FONT_BOLD);
+                            meta.add(warn); meta.add(new JLabel(""));
+                        }
+                    } catch (Exception ignored) { }
+                }
+
+                // line items table
+                String[] lineCols = {"Description", "Qty", "Unit Price (£)", "Line Total (£)"};
+                DefaultTableModel lm = new DefaultTableModel(lineCols, 0) {
+                    @Override public boolean isCellEditable(int r, int c) { return false; }
+                };
+                Object rawLines = inv.get("lines");
+                if (rawLines instanceof java.util.List<?> lineList) {
+                    for (Object lineObj : lineList) {
+                        if (lineObj instanceof java.util.Map<?,?>) {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> line = (Map<String, Object>) lineObj;
+                            lm.addRow(new Object[]{
+                                line.getOrDefault("description", ""),
+                                line.getOrDefault("quantity",    0),
+                                String.format("%.2f", ((Number) line.getOrDefault("unitPrice",  0.0)).doubleValue()),
+                                String.format("%.2f", ((Number) line.getOrDefault("lineTotal",  0.0)).doubleValue())
+                            });
+                        }
+                    }
+                }
+                JTable lineTable = new JTable(lm);
+                UITheme.styleTable(lineTable);
+                JScrollPane lineScroll = new JScrollPane(lineTable);
+                lineScroll.setPreferredSize(new Dimension(520, 140));
+
+                // totals panel
+                JPanel totals = new JPanel(new java.awt.GridLayout(0, 2, 8, 4));
+                totals.setOpaque(false);
+                double gross    = ((Number) inv.getOrDefault("grossTotal",            0.0)).doubleValue();
+                double fixed    = ((Number) inv.getOrDefault("fixedDiscountAmount",   0.0)).doubleValue();
+                double flexible = ((Number) inv.getOrDefault("flexibleCreditApplied", 0.0)).doubleValue();
+                double total    = ((Number) inv.getOrDefault("totalDue",              0.0)).doubleValue();
+                String[][] totRows = {
+                    {"Gross Total:",           String.format("£%.2f", gross)},
+                    {"Fixed Discount:",        String.format("−£%.2f", fixed)},
+                    {"Flexible Credit:",       String.format("−£%.2f", flexible)},
+                    {"Total Due:",             String.format("£%.2f", total)}
+                };
+                for (String[] row : totRows) {
+                    JLabel k = new JLabel(row[0]); k.setFont(UITheme.FONT_BOLD);
+                    JLabel v = new JLabel(row[1]);
+                    if (row[0].equals("Total Due:")) { v.setFont(UITheme.FONT_BOLD); v.setForeground(new Color(0, 100, 0)); }
+                    totals.add(k); totals.add(v);
+                }
+
+                JPanel north = new JPanel(new BorderLayout(0, 8));
+                north.setOpaque(false);
+                north.add(meta, BorderLayout.NORTH);
+                north.add(lineScroll, BorderLayout.CENTER);
+
+                dialog.add(north, BorderLayout.CENTER);
+                dialog.add(totals, BorderLayout.SOUTH);
+
+                JOptionPane.showMessageDialog(WholesaleOrderUI.this, dialog,
+                    "Invoice — SA Order #" + saId, JOptionPane.PLAIN_MESSAGE);
+            }
+        }.execute();
+    }
+
+    // query outstanding balance from SA and display in a dialog with colour-coded warning
+    private void handleCheckBalance() {
+        balanceBtn.setEnabled(false);
+        new SwingWorker<java.util.Map<String, Object>, Void>() {
+            @Override
+            protected java.util.Map<String, Object> doInBackground() {
+                return orderService.getOutstandingBalance();
+            }
+
+            @Override
+            protected void done() {
+                balanceBtn.setEnabled(true);
+                java.util.Map<String, Object> bal;
+                try { bal = get(); } catch (Exception ex) { bal = null; }
+
+                if (bal == null) {
+                    JOptionPane.showMessageDialog(WholesaleOrderUI.this,
+                        "Could not retrieve balance — SA may be offline.",
+                        "Balance Unavailable", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+
+                double total    = ((Number) bal.getOrDefault("outstandingTotal",    0.0)).doubleValue();
+                String currency = String.valueOf(bal.getOrDefault("currency",        "GBP"));
+                Object dueDateObj = bal.get("oldestUnpaidDueDate");
+                long   daysElapsed = ((Number) bal.getOrDefault("daysElapsedSinceDue", 0L)).longValue();
+
+                JPanel panel = new JPanel(new java.awt.GridLayout(0, 2, 8, 6));
+                panel.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+
+                JLabel totalKey = new JLabel("Outstanding Balance:"); totalKey.setFont(UITheme.FONT_BOLD);
+                JLabel totalVal = new JLabel(String.format("%s %.2f", currency, total));
+                totalVal.setFont(UITheme.FONT_BOLD);
+                if (total > 0) totalVal.setForeground(new Color(180, 0, 0));
+                else           totalVal.setForeground(new Color(0, 130, 0));
+
+                panel.add(totalKey); panel.add(totalVal);
+
+                if (dueDateObj != null && !dueDateObj.toString().isEmpty()) {
+                    JLabel dueKey = new JLabel("Oldest Unpaid Due:"); dueKey.setFont(UITheme.FONT_BOLD);
+                    JLabel dueVal = new JLabel(dueDateObj.toString());
+                    panel.add(dueKey); panel.add(dueVal);
+
+                    JLabel daysKey = new JLabel("Days Since Due:"); daysKey.setFont(UITheme.FONT_BOLD);
+                    JLabel daysVal = new JLabel(daysElapsed + " day(s)");
+                    if (daysElapsed > 30) {
+                        daysVal.setForeground(new Color(200, 0, 0));
+                        daysVal.setFont(UITheme.FONT_BOLD);
+                        panel.add(daysKey); panel.add(daysVal);
+                        JLabel warn = new JLabel("⚠  Account at risk — contact SA immediately");
+                        warn.setForeground(new Color(200, 0, 0));
+                        warn.setFont(UITheme.FONT_BOLD);
+                        panel.add(warn); panel.add(new JLabel(""));
+                    } else if (daysElapsed > 0) {
+                        daysVal.setForeground(new Color(200, 120, 0));
+                        panel.add(daysKey); panel.add(daysVal);
+                        JLabel warn = new JLabel("⚠  Payment overdue — settle soon to avoid suspension");
+                        warn.setForeground(new Color(200, 120, 0));
+                        panel.add(warn); panel.add(new JLabel(""));
+                    } else {
+                        panel.add(daysKey); panel.add(daysVal);
+                    }
+                }
+
+                JOptionPane.showMessageDialog(WholesaleOrderUI.this, panel,
+                    "Outstanding Balance — InfoPharma SA", JOptionPane.PLAIN_MESSAGE);
+            }
+        }.execute();
+    }
+
     private void handleSimulatePuSale() {
         List<StockItem> stock = AppContext.getStockService().getAllStock();
         if (stock.isEmpty()) {
@@ -485,6 +703,13 @@ public class WholesaleOrderUI extends JPanel {
         StringBuilder result = new StringBuilder();
 
         if (!items.isEmpty()) {
+            if (!(AppContext.getPuAdapter() instanceof MockPuAdapter)) {
+                JOptionPane.showMessageDialog(this,
+                    "Simulate PU Sale is only available in mock mode.\n"
+                    + "Running in live HTTP mode — trigger a real PU order instead.",
+                    "Mock Only", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
             boolean ok = ((MockPuAdapter) AppContext.getPuAdapter())
                 .simulateSale(items, emailField.getText().trim());
             result.append(ok ? "All items deducted successfully." : "Sale partially applied.");

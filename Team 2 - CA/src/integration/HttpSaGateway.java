@@ -3,6 +3,7 @@ package integration;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import model.OrderLine;
@@ -17,7 +18,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 // real HTTP implementation of ISaGateway — talks to the live IPOS-SA Spring Boot backend
 // swaps in for MockSaGateway when running with -Dipos.http=true
@@ -152,5 +156,84 @@ public class HttpSaGateway implements ISaGateway {
                                      LocalDate dispatchDate, LocalDate expectedDelivery) {
         // still update locally so mock-mode simulate buttons work in demo
         return repo.updateStatus(orderId, status, courier, courierRef, dispatchDate, expectedDelivery);
+    }
+
+    // GET /api/invoices/by-order/{saOrderId} — fetch invoice for a specific SA order
+    // returns a map of invoice fields, or null if SA is unreachable / order has no invoice
+    @Override
+    public Map<String, Object> getInvoiceByOrderId(int saOrderId) {
+        if (!loggedIn) return null;
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(SA_BASE + "/api/invoices/by-order/" + saOrderId))
+                    .GET()
+                    .build();
+            HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() != 200) {
+                System.err.println("[HttpSaGateway] Invoice fetch failed — " + resp.statusCode() + ": " + resp.body());
+                return null;
+            }
+
+            JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
+            Map<String, Object> result = new HashMap<>();
+            result.put("invoiceNumber",        json.has("invoiceNumber")        ? json.get("invoiceNumber").getAsString()        : "—");
+            result.put("issuedAt",             json.has("issuedAt")             ? json.get("issuedAt").getAsString()             : "—");
+            result.put("dueDate",              json.has("dueDate")              ? json.get("dueDate").getAsString()              : "—");
+            result.put("grossTotal",           json.has("grossTotal")           ? json.get("grossTotal").getAsDouble()           : 0.0);
+            result.put("fixedDiscountAmount",  json.has("fixedDiscountAmount")  ? json.get("fixedDiscountAmount").getAsDouble()  : 0.0);
+            result.put("flexibleCreditApplied",json.has("flexibleCreditApplied")? json.get("flexibleCreditApplied").getAsDouble(): 0.0);
+            result.put("totalDue",             json.has("totalDue")             ? json.get("totalDue").getAsDouble()             : 0.0);
+
+            // parse line items
+            List<Map<String, Object>> lines = new ArrayList<>();
+            if (json.has("lines") && json.get("lines").isJsonArray()) {
+                for (JsonElement el : json.getAsJsonArray("lines")) {
+                    JsonObject line = el.getAsJsonObject();
+                    Map<String, Object> lineMap = new HashMap<>();
+                    lineMap.put("description", line.has("description") ? line.get("description").getAsString() : "");
+                    lineMap.put("quantity",    line.has("quantity")    ? line.get("quantity").getAsInt()    : 0);
+                    lineMap.put("unitPrice",   line.has("unitPrice")   ? line.get("unitPrice").getAsDouble()  : 0.0);
+                    lineMap.put("lineTotal",   line.has("lineTotal")   ? line.get("lineTotal").getAsDouble()  : 0.0);
+                    lines.add(lineMap);
+                }
+            }
+            result.put("lines", lines);
+            return result;
+
+        } catch (Exception e) {
+            System.err.println("[HttpSaGateway] Invoice fetch error (non-fatal): " + e.getMessage());
+            return null;
+        }
+    }
+
+    // GET /api/merchant-financials/balance — query outstanding balance for ca_merchant
+    // returns a map with outstandingTotal, currency, oldestUnpaidDueDate, daysElapsedSinceDue
+    @Override
+    public Map<String, Object> getOutstandingBalance() {
+        if (!loggedIn) return null;
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(SA_BASE + "/api/merchant-financials/balance"))
+                    .GET()
+                    .build();
+            HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() != 200) {
+                System.err.println("[HttpSaGateway] Balance fetch failed — " + resp.statusCode() + ": " + resp.body());
+                return null;
+            }
+
+            JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
+            Map<String, Object> result = new HashMap<>();
+            result.put("outstandingTotal",     json.has("outstandingTotal")     ? json.get("outstandingTotal").getAsDouble()  : 0.0);
+            result.put("currency",             json.has("currency")             ? json.get("currency").getAsString()          : "GBP");
+            result.put("oldestUnpaidDueDate",  json.has("oldestUnpaidDueDate") && !json.get("oldestUnpaidDueDate").isJsonNull()
+                                                                                 ? json.get("oldestUnpaidDueDate").getAsString() : null);
+            result.put("daysElapsedSinceDue",  json.has("daysElapsedSinceDue") ? json.get("daysElapsedSinceDue").getAsLong()  : 0L);
+            return result;
+
+        } catch (Exception e) {
+            System.err.println("[HttpSaGateway] Balance fetch error (non-fatal): " + e.getMessage());
+            return null;
+        }
     }
 }
