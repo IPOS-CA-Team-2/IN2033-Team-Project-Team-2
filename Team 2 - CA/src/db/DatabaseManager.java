@@ -261,6 +261,65 @@ public class DatabaseManager {
             stmt.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('reminder2_template', 'Dear {customer_name},\n\nSECOND REMINDER\nAccount: {account_no} | Amount: £{amount}\n\nDespite our previous reminder this balance remains unpaid. Please remit by {payment_due}.\n\nYours sincerely,\n{pharmacy_name}')");
             stmt.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('receipt_footer', 'Thank you for your purchase')");
 
+            // ── Scenario 10 — Eva Bauyer account sale, 1 March 2026 ──────────────
+            stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, card_type, card_first_four, card_last_four, card_expiry, is_paid) VALUES (1, 1, '2026-03-01T00:00:00', 0.03, 'CREDIT_CARD', 'Visa', '4111', '1111', '12/28', 0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (1, 11, 'Ospen',       1, 21.00, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (1, 13, 'Vitamin C',   2,  2.40, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (1, 12, 'Amopen',      2, 30.00, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (1, 14, 'Vitamin B12', 2,  2.60, 0.0)");
+
+            // ── Scenario 11a — cash sale, 3 March 2026 ───────────────────────────
+            stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, is_paid) VALUES (2, 0, '2026-03-03T00:00:00', 0.0, 'CASH', 1)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (2, 2, 'Aspirin', 2, 1.00, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (2, 3, 'Analgin', 3, 2.40, 0.0)");
+
+            // ── Scenario 11b — Visa credit card sale, 3 March 2026 ───────────────
+            stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, card_type, card_first_four, card_last_four, card_expiry, is_paid) VALUES (3, 0, '2026-03-03T00:00:00', 0.0, 'CREDIT_CARD', 'Visa', '4111', '1111', '12/28', 1)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (3, 4, 'Celebrex, caps 100 mg', 2, 20.00, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (3, 6, 'Retin-A Tretin, 30 g',  2, 50.00, 0.0)");
+
+            // ── Scenario 11c — cash sale, 3 March 2026 ───────────────────────────
+            stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, is_paid) VALUES (4, 0, '2026-03-03T00:00:00', 0.0, 'CASH', 1)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (4, 7, 'Lipitor TB, 20 mg', 1, 31.00, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (4, 8, 'Claritin CR, 60g',  1, 39.00, 0.0)");
+
+            // ── Scenario 11d — cash sale, 3 March 2026 ───────────────────────────
+            stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, is_paid) VALUES (5, 0, '2026-03-03T00:00:00', 0.0, 'CASH', 1)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (5, 5,  'Celebrex, caps 200 mg', 1, 37.00, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (5, 9,  'Iodine tincture',       2,  0.60, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (5, 10, 'Rhynol',                2,  5.00, 0.0)");
+
+            // ── Scenario 11e — debit card sale, 3 March 2026 ─────────────────────
+            stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, card_type, card_first_four, card_last_four, card_expiry, is_paid) VALUES (6, 0, '2026-03-03T00:00:00', 0.0, 'DEBIT_CARD', 'Visa', '4222', '2222', '11/27', 1)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (6, 11, 'Ospen',     2, 21.00, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (6, 13, 'Vitamin C', 2,  2.40, 0.0)");
+
+            // ── Scenario 11f — cash sale, 3 March 2026 ───────────────────────────
+            stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, is_paid) VALUES (7, 0, '2026-03-03T00:00:00', 0.0, 'CASH', 1)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (7, 12, 'Amopen',     3, 30.00, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (7, 14, 'Vitamin B12',2,  2.60, 0.0)");
+
+            // ── Scenario 12 — Glynne Morrison account sale, 5 March 2026 ─────────
+            stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, card_type, card_first_four, card_last_four, card_expiry, is_paid) VALUES (8, 2, '2026-03-05T00:00:00', 0.0, 'CREDIT_CARD', 'Visa', '4333', '3333', '10/29', 0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (8, 2,  'Aspirin',               2,  1.00, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (8, 3,  'Analgin',               3,  2.40, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (8, 4,  'Celebrex, caps 100 mg', 2, 20.00, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (8, 6,  'Retin-A Tretin, 30 g',  2, 50.00, 0.0)");
+
+            // ── Scenario 13 — Eva Bauyer account sale, 1 April 2026 ──────────────
+            stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, card_type, card_first_four, card_last_four, card_expiry, is_paid) VALUES (9, 1, '2026-04-01T00:00:00', 0.03, 'CREDIT_CARD', 'Visa', '4444', '4444', '09/30', 0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (9, 11, 'Ospen',                1, 21.00, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (9, 3,  'Analgin',              3,  2.40, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (9, 4,  'Celebrex, caps 100 mg',2, 20.00, 0.0)");
+            stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (9, 14, 'Vitamin B12',          2,  2.60, 0.0)");
+
+            // ── Scenario 14 — Glynne Morrison payment cleared, 29 March 2026 ─────
+            stmt.execute("UPDATE customers SET current_balance = 0.0, status = 'NORMAL', status_1st_reminder = 'no_need', status_2nd_reminder = 'no_need', statement_date = NULL WHERE account_number = 'ACC0002'");
+            stmt.execute("UPDATE sales SET is_paid = 1 WHERE id = 8");
+
+            // ── Scenario 15 — Eva Bauyer last payment 28 Feb, balance outstanding ─
+            stmt.execute("UPDATE customers SET current_balance = 159.47, statement_date = '2026-02-28' WHERE account_number = 'ACC0001'");
+
         }
     }
 }

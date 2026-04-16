@@ -83,28 +83,24 @@ public class StaffManagementUI extends JPanel {
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
         table.setRowSorter(sorter);
 
-        if (query.isBlank()) {
+        if (query == null || query.isBlank()) {
             sorter.setRowFilter(null);
+            return;
         }
-        else {
-            String searchQuery = query.toLowerCase(); // convert to lowercasse
-            int queryLength = searchQuery.length();
-            // if equals to anything on first  or second column
-            if (query.toLowerCase().startsWith("name: ") && queryLength > 6) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(6).trim(), 0));
-            }
-            else if (query.toLowerCase().startsWith("username: ") && queryLength > 10) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(10).trim(), 1));
-            }
-            else if (query.toLowerCase().startsWith("password: ") && queryLength > 10) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(10).trim(), 2));
-            }
-            else if (query.toLowerCase().startsWith("role: ") && queryLength > 6) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(6).trim(), 3));
-            }
-            else {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery, 0, 1, 2, 3)); // search by
-            }
+
+        String q = query.toLowerCase();
+        int len = q.length();
+
+        if (q.startsWith("name: ") && len > 6) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(6).trim(), 1));
+        } else if (q.startsWith("username: ") && len > 10) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(10).trim(), 2));
+        } else if (q.startsWith("password: ") && len > 10) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(10).trim(), 3));
+        } else if (q.startsWith("role: ") && len > 6) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(6).trim(), 4));
+        } else {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q, 1, 2, 4));
         }
     }
 
@@ -191,7 +187,7 @@ public class StaffManagementUI extends JPanel {
         togglePassBtn.addActionListener(e -> togglePasswords(togglePassBtn));
         btnRow.add(togglePassBtn);
 
-        JLabel searchFilters = new JLabel("command followed by  \": \"        |        Search commands: name, username, password, role");
+        JLabel searchFilters = new JLabel("Search commands: name, username, password, role (e.g. username: manager)");
         searchFilters.setFont(UITheme.FONT_SMALL);
         searchFilters.setForeground(UITheme.SECONDARY);
         btnRow.add(searchFilters);

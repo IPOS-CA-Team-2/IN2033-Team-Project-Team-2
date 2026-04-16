@@ -87,7 +87,7 @@ public class StockManagementUI extends JPanel {
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
         stockTable.setRowSorter(sorter);
 
-        if (query.isBlank()) {
+        if (query == null || query.isBlank()) {
             sorter.setRowFilter(null);
             return;
         }
@@ -95,17 +95,17 @@ public class StockManagementUI extends JPanel {
         String q = query.toLowerCase();
         int len = q.length();
 
-        if      (q.startsWith("id: ")          && len > 4)  sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(4).trim(),  COL_ITEM_CODE));
-        else if (q.startsWith("name: ")        && len > 6)  sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(6).trim(),  COL_NAME));
-        else if (q.startsWith("type: ")        && len > 6)  sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(6).trim(),  COL_PKG_TYPE));
-        else if (q.startsWith("unit: ")        && len > 6)  sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(6).trim(),  COL_UNIT));
-        else if (q.startsWith("quantity: ")    && len > 10) sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(10).trim(), COL_QTY));
-        else if (q.startsWith("cost: ")        && len > 6)  sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(6).trim(),  COL_BULK_COST));
-        else if (q.startsWith("threshold: ")   && len > 11) sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(11).trim(), COL_THRESHOLD));
-        else if (q.startsWith("price: ")       && len > 7)  sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(7).trim(),  COL_RETAIL_PRICE));
-        else if (q.startsWith("status: ")      && len > 8)  sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(8).trim(),  COL_STATUS));
+        if      (q.startsWith("id: ")        && len > 4)  sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(4).trim(),  COL_ITEM_CODE));
+        else if (q.startsWith("desc: ")      && len > 6)  sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(6).trim(),  COL_NAME));
+        else if (q.startsWith("type: ")      && len > 6)  sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(6).trim(),  COL_PKG_TYPE));
+        else if (q.startsWith("unit: ")      && len > 6)  sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(6).trim(),  COL_UNIT));
+        else if (q.startsWith("quantity: ")  && len > 10) sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(10).trim(), COL_QTY));
+        else if (q.startsWith("cost: ")      && len > 6)  sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(6).trim(),  COL_BULK_COST));
+        else if (q.startsWith("threshold: ") && len > 11) sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(11).trim(), COL_THRESHOLD));
+        else if (q.startsWith("price: ")     && len > 7)  sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(7).trim(),  COL_RETAIL_PRICE));
+        else if (q.startsWith("status: ")    && len > 8)  sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(8).trim(),  COL_STATUS));
         else sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q,
-                COL_ITEM_CODE, COL_NAME, COL_PKG_TYPE, COL_UNIT, COL_QTY, COL_BULK_COST, COL_THRESHOLD, COL_RETAIL_PRICE, COL_STATUS));
+                    COL_ITEM_CODE, COL_NAME, COL_PKG_TYPE, COL_UNIT, COL_STATUS));
     }
 
     // table showing all stock items — columns match the ipos spec catalogue
@@ -197,7 +197,7 @@ public class StockManagementUI extends JPanel {
         panel.add(refreshBtn);
 
         JLabel searchFilters = new JLabel(
-            "Search commands: id, name, type, unit, quantity, cost, threshold, price, status  (e.g.  name: Aspirin)");
+            "Search commands: id, desc, type, unit, quantity, cost, threshold, price, status  (e.g.  name: Aspirin)");
         searchFilters.setFont(UITheme.FONT_SMALL);
         searchFilters.setForeground(UITheme.SECONDARY);
         panel.add(searchFilters);

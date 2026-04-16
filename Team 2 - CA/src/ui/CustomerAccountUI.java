@@ -110,43 +110,35 @@ public class CustomerAccountUI extends JPanel {
     }
 
     private void filterTable(String query) {
-        // check for ID, account #, name and status
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
         customerTable.setRowSorter(sorter);
-        if (query.isBlank()) {
+
+        if (query == null || query.isBlank()) {
             sorter.setRowFilter(null);
+            return;
         }
-        else {
-            String searchQuery = query.toLowerCase(); // convert to lowercasse
-            int queryLength = searchQuery.length();
-            // if equals to anything on first  or second column
-            if (query.toLowerCase().startsWith("id: ") && queryLength > 4) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(4).trim(), 0));
-            }
-            else if (query.toLowerCase().startsWith("account: ") && queryLength > 9) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(9).trim(), 1));
-            }
-            else if (query.toLowerCase().startsWith("name: ") && queryLength > 6) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(6).trim(), 2));
-            }
-            else if (query.toLowerCase().startsWith("balance: ") && queryLength > 9) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(9).trim(), 3));
-            }
-            else if (query.toLowerCase().startsWith("limit: ") && queryLength > 7) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(7).trim(), 4));
-            }
-            else if (query.toLowerCase().startsWith("status: ") && queryLength > 8) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(8).trim(), 5));
-            }
-            else if (query.toLowerCase().startsWith("1streminder: ") && queryLength > 13) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(13).trim(), 6));
-            }
-            else if (query.toLowerCase().startsWith("2ndreminder: ") && queryLength > 13) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(13).trim(), 6));
-            }
-            else {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery, 0, 1, 2, 3,4,5,6, 7));
-            }
+
+        String q = query.toLowerCase();
+        int len = q.length();
+
+        if (q.startsWith("id: ") && len > 4) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(4).trim(), COL_ID));
+        } else if (q.startsWith("account: ") && len > 9) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(9).trim(), COL_ACCOUNT));
+        } else if (q.startsWith("name: ") && len > 6) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(6).trim(), COL_NAME));
+        } else if (q.startsWith("balance: ") && len > 9) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(9).trim(), COL_BALANCE));
+        } else if (q.startsWith("limit: ") && len > 7) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(7).trim(), COL_LIMIT));
+        } else if (q.startsWith("status: ") && len > 8) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(8).trim(), COL_STATUS));
+        } else if (q.startsWith("1streminder: ") && len > 13) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(13).trim(), COL_REM1));
+        } else if (q.startsWith("2ndreminder: ") && len > 13) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(13).trim(), COL_REM2));
+        } else {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q, COL_ACCOUNT, COL_NAME, COL_STATUS));
         }
     }
 
@@ -229,7 +221,7 @@ public class CustomerAccountUI extends JPanel {
         panel.setBackground(UITheme.LIGHT_BG);
         panel.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
 
-        JButton addBtn     = UITheme.successBtn("Add Account Holder");
+        JButton addBtn     = UITheme.successBtn("Add Account");
         JButton editBtn    = UITheme.primaryBtn("Edit Details");
         JButton paymentBtn = UITheme.primaryBtn("Record Payment");
         JButton refreshBtn = UITheme.secondaryBtn("Refresh");
@@ -274,7 +266,7 @@ public class CustomerAccountUI extends JPanel {
             panel.add(deleteBtn);
         }
 
-        JLabel searchFilters = new JLabel("command followed by  \": \"        |        Search commands: id, account, name, balance, limit, status, 1streminder, 2ndreminder");
+        JLabel searchFilters = new JLabel("Search commands: id, account, name, balance, limit, status, 1streminder, 2ndreminder ()");
         searchFilters.setFont(UITheme.FONT_SMALL);
         searchFilters.setForeground(UITheme.SECONDARY);
         panel.add(searchFilters, BorderLayout.SOUTH);
