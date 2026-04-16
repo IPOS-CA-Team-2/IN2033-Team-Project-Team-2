@@ -114,14 +114,26 @@ public class DatabaseManager {
             try { stmt.execute("ALTER TABLE customers ADD COLUMN phone TEXT NOT NULL DEFAULT ''"); }
             catch (SQLException ignored) { /* already present */ }
 
-            // seed account holders from spec
+            // migration: add last_payment_date to existing installations
+            try { stmt.execute("ALTER TABLE customers ADD COLUMN last_payment_date TEXT"); }
+            catch (SQLException ignored) { /* already present */ }
+
+            // seed account holders from spec — full scenario state baked in so no UPDATE needed on restart
+            // Eva:   £159.47 outstanding (Mar + Apr purchases, 3% discount applied), 1st reminder sent 15 Apr
+            // Glynne: £0 balance (paid in full 29 Mar), last_payment_date recorded
             stmt.execute("""
                 INSERT OR IGNORE INTO customers
                     (name, contact_name, phone, address, account_number, credit_limit, current_balance,
-                     monthly_spend, discount_type, fixed_discount_rate, status, status_1st_reminder, status_2nd_reminder)
+                     monthly_spend, discount_type, fixed_discount_rate, status,
+                     status_1st_reminder, status_2nd_reminder,
+                     date_1st_reminder, date_2nd_reminder, statement_date, last_payment_date)
                 VALUES
-                    ('Ms Eva Bauyer',    'Ms Eva Bauyer',    '0207 321 8001', '1, Liverpool street, London EC2V 8NS', 'ACC0001', 500.0, 0.0, 0.0, 'FIXED',    0.03, 'NORMAL', 'no_need', 'no_need'),
-                    ('Mr Glynne Morrison','Ms Glynne Morisson','0207 321 8001','1, Liverpool street, London EC2V 8NS', 'ACC0002', 500.0, 0.0, 0.0, 'FLEXIBLE', 0.00, 'NORMAL', 'no_need', 'no_need')
+                    ('Ms Eva Bauyer',     'Ms Eva Bauyer',      '0207 321 8001', '1, Liverpool street, London EC2V 8NS',
+                     'ACC0001', 500.0, 159.47, 71.20, 'FIXED',    0.03, 'SUSPENDED',
+                     'sent', 'no_need', '2026-04-15', NULL, '2026-03-31', '2026-02-28'),
+                    ('Mr Glynne Morrison','Ms Glynne Morisson', '0207 321 8001', '1, Liverpool street, London EC2V 8NS',
+                     'ACC0002', 500.0,   0.00,  0.00, 'FLEXIBLE', 0.00, 'NORMAL',
+                     'no_need', 'no_need', NULL, NULL, NULL, '2026-03-29')
             """);
 
             // sales table — one row per transaction
@@ -230,19 +242,19 @@ public class DatabaseManager {
                 INSERT OR REPLACE INTO stock
                     (id, item_code, name, package_type, unit, units_per_pack, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold) VALUES
                     (1,  '100 00001', 'Paracetamol',          'Box',    'Caps', 20,  121, 0.10,  1.0, 0.00, 10),
-                    (2,  '100 00002', 'Aspirin',              'Box',    'Caps', 20,  201, 0.50,  1.0, 0.00, 15),
-                    (3,  '100 00003', 'Analgin',              'Box',    'Caps', 10,   25, 1.20,  1.0, 0.00, 10),
-                    (4,  '100 00004', 'Celebrex, caps 100 mg','Box',    'Caps', 10,   43, 10.00, 1.0, 0.00, 10),
-                    (5,  '100 00005', 'Celebrex, caps 200 mg','Box',    'Caps', 10,   35, 18.50, 1.0, 0.00,  5),
-                    (6,  '100 00006', 'Retin-A Tretin, 30 g', 'Box',    'Caps', 20,   28, 25.00, 1.0, 0.00, 10),
-                    (7,  '100 00007', 'Lipitor TB, 20 mg',    'Box',    'Caps', 30,   10, 15.50, 1.0, 0.00, 10),
-                    (8,  '100 00008', 'Claritin CR, 60g',     'Box',    'Caps', 20,   21, 19.50, 1.0, 0.00, 10),
-                    (9,  '200 00004', 'Iodine tincture',      'Bottle', 'Ml',  100,   35,  0.30, 1.0, 0.00, 10),
-                    (10, '200 00005', 'Rhynol',               'Bottle', 'Ml',  200,   14,  2.50, 1.0, 0.00, 15),
-                    (11, '300 00001', 'Ospen',                'Box',    'Caps', 20,   78, 10.50, 1.0, 0.00, 10),
-                    (12, '300 00002', 'Amopen',               'Box',    'Caps', 30,   90, 15.00, 1.0, 0.00, 15),
-                    (13, '400 00001', 'Vitamin C',            'Box',    'Caps', 30,   22,  1.20, 1.0, 0.00, 15),
-                    (14, '400 00002', 'Vitamin B12',          'Box',    'Caps', 30,   43,  1.30, 1.0, 0.00, 15)
+                    (2,  '100 00002', 'Aspirin',              'Box',    'Caps', 20,  197, 0.50,  1.0, 0.00, 15),
+                    (3,  '100 00003', 'Analgin',              'Box',    'Caps', 10,   16, 1.20,  1.0, 0.00, 10),
+                    (4,  '100 00004', 'Celebrex, caps 100 mg','Box',    'Caps', 10,   37, 10.00, 1.0, 0.00, 10),
+                    (5,  '100 00005', 'Celebrex, caps 200 mg','Box',    'Caps', 10,   34, 18.50, 1.0, 0.00,  5),
+                    (6,  '100 00006', 'Retin-A Tretin, 30 g', 'Box',    'Caps', 20,   24, 25.00, 1.0, 0.00, 10),
+                    (7,  '100 00007', 'Lipitor TB, 20 mg',    'Box',    'Caps', 30,    9, 15.50, 1.0, 0.00, 10),
+                    (8,  '100 00008', 'Claritin CR, 60g',     'Box',    'Caps', 20,   20, 19.50, 1.0, 0.00, 10),
+                    (9,  '200 00004', 'Iodine tincture',      'Bottle', 'Ml',  100,   33,  0.30, 1.0, 0.00, 10),
+                    (10, '200 00005', 'Rhynol',               'Bottle', 'Ml',  200,   12,  2.50, 1.0, 0.00, 15),
+                    (11, '300 00001', 'Ospen',                'Box',    'Caps', 20,   74, 10.50, 1.0, 0.00, 10),
+                    (12, '300 00002', 'Amopen',               'Box',    'Caps', 30,   85, 15.00, 1.0, 0.00, 15),
+                    (13, '400 00001', 'Vitamin C',            'Box',    'Caps', 30,   18,  1.20, 1.0, 0.00, 15),
+                    (14, '400 00002', 'Vitamin B12',          'Box',    'Caps', 30,   37,  1.30, 1.0, 0.00, 15)
             """);
 
             // database for the templates
@@ -300,25 +312,20 @@ public class DatabaseManager {
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (7, 14, 'Vitamin B12',2,  2.60, 0.0)");
 
             // ── Scenario 12 — Glynne Morrison account sale, 5 March 2026 ─────────
-            stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, card_type, card_first_four, card_last_four, card_expiry, is_paid) VALUES (8, 2, '2026-03-05T00:00:00', 0.0, 'CREDIT_CARD', 'Visa', '4333', '3333', '10/29', 0)");
+            // paid in full on 29 March (scenario 14) — is_paid=1 set directly, no UPDATE needed
+            stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, is_paid) VALUES (8, 2, '2026-03-05T00:00:00', 0.0, 'CASH', 1)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (8, 2,  'Aspirin',               2,  1.00, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (8, 3,  'Analgin',               3,  2.40, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (8, 4,  'Celebrex, caps 100 mg', 2, 20.00, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (8, 6,  'Retin-A Tretin, 30 g',  2, 50.00, 0.0)");
 
             // ── Scenario 13 — Eva Bauyer account sale, 1 April 2026 ──────────────
-            stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, card_type, card_first_four, card_last_four, card_expiry, is_paid) VALUES (9, 1, '2026-04-01T00:00:00', 0.03, 'CREDIT_CARD', 'Visa', '4444', '4444', '09/30', 0)");
+            // 3% discount applied: 73.40 × 0.97 = £71.20 charged to account
+            stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, is_paid) VALUES (9, 1, '2026-04-01T00:00:00', 0.03, 'CASH', 0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (9, 11, 'Ospen',                1, 21.00, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (9, 3,  'Analgin',              3,  2.40, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (9, 4,  'Celebrex, caps 100 mg',2, 20.00, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (9, 14, 'Vitamin B12',          2,  2.60, 0.0)");
-
-            // ── Scenario 14 — Glynne Morrison payment cleared, 29 March 2026 ─────
-            stmt.execute("UPDATE customers SET current_balance = 0.0, status = 'NORMAL', status_1st_reminder = 'no_need', status_2nd_reminder = 'no_need', statement_date = NULL WHERE account_number = 'ACC0002'");
-            stmt.execute("UPDATE sales SET is_paid = 1 WHERE id = 8");
-
-            // ── Scenario 15 — Eva Bauyer last payment 28 Feb, balance outstanding ─
-            stmt.execute("UPDATE customers SET current_balance = 159.47, statement_date = '2026-02-28' WHERE account_number = 'ACC0001'");
 
         }
     }
