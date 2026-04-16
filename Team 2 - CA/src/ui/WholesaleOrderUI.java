@@ -114,37 +114,30 @@ public class WholesaleOrderUI extends JPanel {
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
         orderTable.setRowSorter(sorter);
 
-        if (query.isBlank()) {
+        if (query == null || query.isBlank()) {
             sorter.setRowFilter(null);
+            return;
         }
-        else {
-            String searchQuery = query.toLowerCase(); // convert to lowercasse
-            int queryLength = searchQuery.length();
-            // if equals to anything on first  or second column
-            if (query.toLowerCase().startsWith("orderid: ") && queryLength > 9) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(9).trim(), 0));
-            }
-            else if (query.toLowerCase().startsWith("date: ") && queryLength > 6) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(6).trim(), 1));
-            }
-            else if (query.toLowerCase().startsWith("status: ") && queryLength > 8) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(8).trim(), 2));
-            }
-            else if (query.toLowerCase().startsWith("items: ") && queryLength > 7) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(7).trim(), 3));
-            }
-            else if (query.toLowerCase().startsWith("total: ") && queryLength > 7) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(7).trim(), 4));
-            }
-            else if (query.toLowerCase().startsWith("delivery: ") && queryLength > 10) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(10).trim(), 5));
-            }
-            else if (query.toLowerCase().startsWith("courier: ") && queryLength > 9) {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery.substring(9).trim(), 6));
-            }
-            else {
-                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + searchQuery, 0, 1, 2, 3,4,5,6)); // search by orderID, date, status, items, price
-            }
+
+        String q = query.toLowerCase();
+        int len = q.length();
+
+        if (q.startsWith("orderid: ") && len > 9) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(9).trim(), COL_ID));
+        } else if (q.startsWith("date: ") && len > 6) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(6).trim(), COL_DATE));
+        } else if (q.startsWith("status: ") && len > 8) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(8).trim(), COL_STATUS));
+        } else if (q.startsWith("items: ") && len > 7) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(7).trim(), COL_ITEMS));
+        } else if (q.startsWith("total: ") && len > 7) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(7).trim(), COL_TOTAL));
+        } else if (q.startsWith("delivery: ") && len > 10) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(10).trim(), COL_EXPECTED));
+        } else if (q.startsWith("courier: ") && len > 9) {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q.substring(9).trim(), COL_COURIER));
+        } else {
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + q, COL_DATE, COL_STATUS, COL_COURIER));
         }
     }
 
@@ -233,7 +226,7 @@ public class WholesaleOrderUI extends JPanel {
         puSimBtn.addActionListener(e -> handleSimulatePuSale());
         refreshBtn.addActionListener(e -> loadOrders());
 
-        JLabel searchFilters = new JLabel("command followed by  \": \"        |        Search commands: orderid, date, status, items, total, delivery");
+        JLabel searchFilters = new JLabel("Search commands: orderid, date, status, items, total, delivery, courier (e.g. date: 2026-03-02)");
         searchFilters.setFont(UITheme.FONT_SMALL);
         searchFilters.setForeground(UITheme.SECONDARY);
 
