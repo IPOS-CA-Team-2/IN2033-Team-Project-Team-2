@@ -15,8 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 // account holder management screen
-// pharmacists can view/add/edit accounts and record payments
-// managers also get: generate reminders, restore in-default accounts
+// pharmacists can view, add, and edit accounts and record payments
+// managers also get generate reminders and restore in-default accounts
 public class CustomerAccountUI extends JPanel {
 
     private final User currentUser;
@@ -47,7 +47,6 @@ public class CustomerAccountUI extends JPanel {
         setOpaque(false);
 
         add(topSection(), BorderLayout.NORTH);
-        //add(buildHeader(), BorderLayout.NORTH);
         add(buildTablePanel(), BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
 
@@ -56,24 +55,14 @@ public class CustomerAccountUI extends JPanel {
 
 
     private JPanel topSection() {
-        // adding a search bar at the very top to search for name of drug or by id
-        // returns everything that matches
-        // copied from StaffManagementUI
-
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(UITheme.DARK_HEADER);
         header.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
 
-
-        // adds management text on the left of the top bar
-        // add a filler cause it looks empty without it
         JLabel titleLabel = new JLabel("Customer Accounts");
         titleLabel.setFont(UITheme.FONT_TITLE);
         titleLabel.setForeground(Color.WHITE);
 
-
-
-        // adds search bar on the right of the top bar
         JLabel searchLabel = new JLabel("Search: ");
         searchLabel.setFont(UITheme.FONT_BOLD);
         searchLabel.setForeground(Color.WHITE);
@@ -84,24 +73,15 @@ public class CustomerAccountUI extends JPanel {
         UITheme.styleTextField(searchField);
 
         searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            public void insertUpdate (javax.swing.event.DocumentEvent e) {
-                filterTable(searchField.getText());
-            }
-
-            public void removeUpdate (javax.swing.event.DocumentEvent e) {
-                filterTable(searchField.getText());
-            }
-
-            public void changedUpdate(javax.swing.event.DocumentEvent e) {
-                filterTable(searchField.getText());
-            }
+            public void insertUpdate (javax.swing.event.DocumentEvent e) { filterTable(searchField.getText()); }
+            public void removeUpdate (javax.swing.event.DocumentEvent e) { filterTable(searchField.getText()); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { filterTable(searchField.getText()); }
         });
 
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         searchPanel.setOpaque(false);
         searchPanel.add(searchLabel);
         searchPanel.add(searchField);
-
 
         header.add(searchPanel, BorderLayout.EAST);
         header.add(titleLabel, BorderLayout.WEST);
@@ -178,7 +158,7 @@ public class CustomerAccountUI extends JPanel {
         customerTable.getColumnModel().getColumn(COL_ID).setMaxWidth(40);
         UITheme.styleTable(customerTable);
 
-        // colour rows by account status — alternating rows as base for normal accounts
+        // colour rows by account status, alternating rows for normal accounts
         customerTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value,
@@ -215,7 +195,7 @@ public class CustomerAccountUI extends JPanel {
         return panel;
     }
 
-    // action buttons — manager gets extra restore and generate reminders
+    // action buttons, manager also gets restore and generate reminders buttons
     private JPanel buildButtonPanel() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 10));
         panel.setBackground(UITheme.LIGHT_BG);
@@ -310,7 +290,7 @@ public class CustomerAccountUI extends JPanel {
         return customerRepo.findById(id);
     }
 
-    // dialog to add a new account holder — account number is auto-generated
+    // dialog to add a new account holder, account number is auto-generated
     private void handleAddCustomer() {
         // generate the next account number before showing the form
         String generatedAcctNum = customerRepo.generateAccountNumber();
@@ -491,12 +471,12 @@ public class CustomerAccountUI extends JPanel {
         loadCustomerData(null);
     }
 
-    // permanently delete an account holder — manager only, requires confirmation
+    // permanently deletes an account holder, manager only, requires confirmation
     private void handleDeleteCustomer() {
         Customer c = getSelectedCustomer();
         if (c == null) return;
 
-        // block deletion if the account has an outstanding balance
+        // can't delete if the account still has an outstanding balance
         if (c.getCurrentBalance() > 0.01) {
             JOptionPane.showMessageDialog(this,
                 "Cannot delete " + c.getName() + " — outstanding balance of £"
@@ -561,10 +541,7 @@ public class CustomerAccountUI extends JPanel {
             JOptionPane.showMessageDialog(this, "Failed to restore account.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
-    // apply end-of-month flexible discounts to all eligible account holders (manager only)
-    // finds every customer on a flexible discount plan, calculates their tier discount
-    // based on total monthly spend, deducts it from their outstanding balance, and resets
-    // their monthly spend counter to zero ready for the new month
+    // calculates and applies end-of-month flexible discounts, then resets monthly spend (manager only)
     private void handleApplyMonthEndDiscounts() {
         List<Customer> all = customerRepo.findAll();
         List<Customer> eligible = new ArrayList<>();
@@ -613,9 +590,8 @@ public class CustomerAccountUI extends JPanel {
     }
 
     private void handleGenerateStatements() {
-        // set statement_date for every customer with an outstanding balance before generating text
-        // this starts the suspension clock: statement_date = end of last month,
-        // so suspension deadline = 15th of this month
+        // set statement_date for every customer with an outstanding balance before generating
+        // this starts the suspension clock, deadline is the 15th of the current month
         List<Customer> allCustomers = customerRepo.findAll();
         for (Customer c : allCustomers) {
             if (c.getCurrentBalance() > 0) {
@@ -648,7 +624,7 @@ public class CustomerAccountUI extends JPanel {
             }
         }
 
-        // immediately re-check statuses so any accounts past the deadline show as suspended
+        // re-check statuses so accounts past the deadline are shown as suspended
         accountService.updateAccountStatuses();
         loadCustomerData(null);
     }

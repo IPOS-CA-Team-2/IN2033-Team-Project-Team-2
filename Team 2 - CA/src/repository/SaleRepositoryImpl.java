@@ -37,7 +37,7 @@ public class SaleRepositoryImpl implements SaleRepository {
                 saleStmt.setDouble(3, sale.getDiscountPercent());
                 saleStmt.setString(4, sale.getPaymentMethod().name());
 
-                // card details — null for cash payments
+                // card details, null for cash payments
                 CardDetails card = sale.getCardDetails();
                 if (card != null) {
                     saleStmt.setString(5, card.getCardType());

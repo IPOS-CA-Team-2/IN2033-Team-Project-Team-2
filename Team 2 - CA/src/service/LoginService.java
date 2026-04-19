@@ -4,24 +4,12 @@ import exception.AuthException;
 import model.User;
 import repository.UserRepository;
 
-/**
- * Handles authentication business logic for IPOS-CA.
- *
- * Responsibilities:
- *   - Validate that input is not blank
- *   - Delegate credential lookup to UserRepository
- *   - Return the authenticated User on success
- *   - Throw AuthException with a specific reason on failure
- *
- * This class has no dependency on any UI and can be unit-tested independently.
- */
+// handles login logic for the CA system
+// no UI dependency so it can be tested on its own
 public class LoginService {
 
     private final UserRepository userRepository;
 
-    /**
-     * @param userRepository the data source used to look up users
-     */
     public LoginService(UserRepository userRepository) {
         if (userRepository == null) {
             throw new IllegalArgumentException("UserRepository cannot be null.");
@@ -29,17 +17,10 @@ public class LoginService {
         this.userRepository = userRepository;
     }
 
-    /**
-     * Attempts to authenticate a user with the supplied credentials.
-     *
-     * @param username the entered username (trimmed before use)
-     * @param password the entered password
-     * @return the authenticated User object on success
-     * @throws AuthException if authentication fails for any reason
-     */
+    // tries to log the user in with the given credentials, throws AuthException if anything fails
     public User login(String username, String password) throws AuthException {
 
-        // 1. Reject blank inputs immediately — no point hitting the database
+        // 1. reject blank inputs straight away, no point hitting the database
         if (username == null || username.isBlank()) {
             throw new AuthException(
                 AuthException.Reason.BLANK_INPUT,
@@ -55,7 +36,7 @@ public class LoginService {
 
         String trimmedUsername = username.trim();
 
-        // 2. Look up the user by username
+        // 2. look up the user by username
         User user = userRepository.findByUsername(trimmedUsername);
 
         if (user == null) {
@@ -66,7 +47,7 @@ public class LoginService {
             );
         }
 
-        // 3. Validate password against the stored record
+        // 3. check the password against the stored record
         if (!user.checkPassword(password)) {
             throw new AuthException(
                 AuthException.Reason.INVALID_CREDENTIALS,
@@ -74,7 +55,7 @@ public class LoginService {
             );
         }
 
-        // 4. All checks passed — return the authenticated user
+        // 4. all checks passed, return the authenticated user
         return user;
     }
 }

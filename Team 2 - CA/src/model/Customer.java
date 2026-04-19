@@ -2,8 +2,8 @@ package model;
 
 import java.time.LocalDate;
 
-// represents an account holder — a regular customer with credit, discount, and status tracking
-// pharmacist identifies them by account number at point of sale
+// an account customer who buys on credit
+// pharmacist looks them up by account number at point of sale
 public class Customer {
 
     private final int customerId;
@@ -11,15 +11,15 @@ public class Customer {
     private final String contactName;     // contact person (may differ from account holder name)
     private final String phone;
     private final String address;
-    private final String accountNumber;   // e.g. ACC0001 — used to identify at till
+    private final String accountNumber;   // e.g. ACC0001, used to identify at till
     private final double creditLimit;     // max outstanding balance allowed
     private final double currentBalance;  // current unpaid debt
     private final double monthlySpend;    // total spend this calendar month (for flexible discount)
     private final DiscountType discountType;
-    private final double fixedDiscountRate; // e.g. 0.10 for 10% — only used when type is FIXED
+    private final double fixedDiscountRate; // e.g. 0.10 for 10%, only used when type is FIXED
     private final AccountStatus status;
 
-    // reminder attributes per brief spec — values: no_need / due / sent
+    // reminder attributes per brief spec, values: no_need / due / sent
     private final String status1stReminder;
     private final String status2ndReminder;
     private final LocalDate date1stReminder;  // null means 'now'

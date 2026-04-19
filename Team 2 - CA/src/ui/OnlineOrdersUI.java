@@ -15,22 +15,21 @@ import java.sql.SQLException;
 import java.util.List;
 
 // screen for viewing and progressing online orders received from ipos-pu
-// pharmacist/manager can advance order status through the lifecycle:
-//   RECEIVED → READY_FOR_SHIPMENT → DISPATCHED → DELIVERED
-// each status change is pushed back to PU so the member's "My Orders" view stays in sync
+// pharmacist or manager can move an order through: RECEIVED, READY_FOR_SHIPMENT, DISPATCHED, DELIVERED
+// each status change is pushed back to PU so the member's order history stays up to date
 public class OnlineOrdersUI extends JPanel {
 
     private DefaultTableModel tableModel;
-    private JTable            orderTable;
-    private JLabel            footerLabel;
+    private JTable orderTable;
+    private JLabel footerLabel;
 
-    private static final int COL_DB_ID    = 0;  // hidden — internal online_sales.id
+    private static final int COL_DB_ID = 0;    // hidden, internal online_sales.id
     private static final int COL_ORDER_ID = 1;
-    private static final int COL_DATE     = 2;
-    private static final int COL_EMAIL    = 3;
-    private static final int COL_ADDRESS  = 4;
-    private static final int COL_ITEMS    = 5;
-    private static final int COL_STATUS   = 6;
+    private static final int COL_DATE = 2;
+    private static final int COL_EMAIL = 3;
+    private static final int COL_ADDRESS = 4;
+    private static final int COL_ITEMS = 5;
+    private static final int COL_STATUS = 6;
 
     // status progression order
     private static final List<String> STATUS_ORDER =
@@ -173,9 +172,9 @@ public class OnlineOrdersUI extends JPanel {
             return;
         }
 
-        int    dbId      = (int)    tableModel.getValueAt(row, COL_DB_ID);
+        int dbId = (int) tableModel.getValueAt(row, COL_DB_ID);
         String puOrderId = (String) tableModel.getValueAt(row, COL_ORDER_ID);
-        String current   = (String) tableModel.getValueAt(row, COL_STATUS);
+        String current = (String) tableModel.getValueAt(row, COL_STATUS);
 
         if ("DELIVERED".equals(current)) {
             JOptionPane.showMessageDialog(this,

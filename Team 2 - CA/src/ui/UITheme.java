@@ -5,7 +5,7 @@ import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
 
-// centralized visual theme — colors, fonts, and component styling helpers
+// centralized visual theme for colors, fonts, and component styling
 // all methods are static, no instantiation needed
 public class UITheme {
 
@@ -88,7 +88,7 @@ public class UITheme {
         header.setOpaque(true);
         header.setReorderingAllowed(false);
 
-        // default alternating renderer — will be overridden in screens with custom renderers
+        // default alternating renderer, overridden in screens that need custom colours
         table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object value,
@@ -116,7 +116,7 @@ public class UITheme {
         return header;
     }
 
-    // overload — right-side control (e.g. search panel)
+    // overload that also takes a right-side control (e.g. search panel)
     public static JPanel createHeaderPanel(String title, JComponent rightControl) {
         JPanel header = createHeaderPanel(title);
         header.add(rightControl, BorderLayout.EAST);

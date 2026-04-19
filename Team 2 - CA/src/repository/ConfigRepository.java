@@ -5,6 +5,7 @@ import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
 
+// reads and writes key/value config entries from the config table
 public class ConfigRepository {
 
     public String get(String key) {

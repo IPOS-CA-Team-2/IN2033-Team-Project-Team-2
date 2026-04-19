@@ -11,8 +11,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 
-// live HTTP implementation of IPuStockUpdater — used when CA is started with -Dipos.http=true
-// all calls are non-fatal: if PU is offline the CA operation completes locally
+// live HTTP implementation of IPuStockUpdater, used when CA is started with -Dipos.http=true
+// all calls are non-fatal, if PU is offline the CA operation still completes locally
 public class HttpPuAdapter implements IPuStockUpdater {
 
     private static final String PU_BASE = "http://localhost:8082";
@@ -52,7 +52,7 @@ public class HttpPuAdapter implements IPuStockUpdater {
                 }
             }
             String message = approved ? "Payment approved" : "Card declined by payment processor";
-            System.out.println("[CA->PU] Card clearance: " + (approved ? "APPROVED" : "DECLINED")
+            System.err.println("[CA->PU] Card clearance: " + (approved ? "APPROVED" : "DECLINED")
                     + " £" + String.format("%.2f", amount));
             return new CardClearanceResult(approved, txRef, message);
 
@@ -69,7 +69,7 @@ public class HttpPuAdapter implements IPuStockUpdater {
     public void notifyProductDeleted(int caItemId) {
         try {
             delete(PU_BASE + "/api/products/ca/" + caItemId);
-            System.out.println("[CA->PU] Deletion notified for caItemId=" + caItemId);
+            System.err.println("[CA->PU] Deletion notified for caItemId=" + caItemId);
         } catch (Exception e) {
             System.err.println("[CA->PU] /api/products/ca delete failed (non-fatal): " + e.getMessage());
         }
@@ -84,7 +84,7 @@ public class HttpPuAdapter implements IPuStockUpdater {
                 + "\"price\":"     + String.format("%.2f", item.getPriceIncVat())
                 + "}";
             post(PU_BASE + "/api/products/ca-sync", body);
-            System.out.println("[CA->PU] Stock sync notified for caItemId=" + item.getItemId());
+            System.err.println("[CA->PU] Stock sync notified for caItemId=" + item.getItemId());
         } catch (Exception e) {
             System.err.println("[CA->PU] /api/products/ca-sync failed (non-fatal): " + e.getMessage());
         }
@@ -104,7 +104,7 @@ public class HttpPuAdapter implements IPuStockUpdater {
 
             String body = "{\"status\":\"" + puStatus + "\"}";
             post(PU_BASE + "/api/orders/" + numericId + "/status", body);
-            System.out.println("[CA->PU] Order status update: " + puOrderId + " -> " + puStatus);
+            System.err.println("[CA->PU] Order status update: " + puOrderId + " -> " + puStatus);
         } catch (Exception e) {
             System.err.println("[CA->PU] order status update failed (non-fatal): " + e.getMessage());
         }

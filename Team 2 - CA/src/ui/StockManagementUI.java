@@ -14,7 +14,7 @@ import java.awt.*;
 import java.util.List;
 import java.sql.*;
 
-// stock management screen — view all stock, update quantities, add/remove items
+// stock management screen for viewing stock, updating quantities, and adding/removing items
 // accessible by pharmacist and admin from the dashboard
 public class StockManagementUI extends JPanel {
 
@@ -22,7 +22,7 @@ public class StockManagementUI extends JPanel {
     private DefaultTableModel tableModel;
     private JTable stockTable;
 
-    // column indices — COL_ID is hidden (internal use only)
+    // column indices, COL_ID is hidden and only used for lookups
     private static final int COL_ID          = 0;
     private static final int COL_ITEM_CODE   = 1;
     private static final int COL_NAME        = 2;
@@ -46,8 +46,8 @@ public class StockManagementUI extends JPanel {
 
         loadStockData();
 
-        // register for live stock refresh — when pu pushes an online sale via CaApiServer,
-        // AppContext.notifyStockRefresh() calls loadStockData() on the EDT automatically
+        // register for live stock refresh so the table updates automatically
+        // when PU pushes an online sale through CaApiServer
         AppContext.addStockRefreshListener(this::loadStockData);
     }
 
@@ -108,11 +108,11 @@ public class StockManagementUI extends JPanel {
                     COL_ITEM_CODE, COL_NAME, COL_PKG_TYPE, COL_UNIT, COL_STATUS));
     }
 
-    // table showing all stock items — columns match the ipos spec catalogue
+    // builds the main stock table, columns match the IPOS spec catalogue
     private JPanel buildTablePanel() {
         String[] columns = {
-            "ID",                   // 0 — hidden internal key
-            "Item ID",              // 1 — spec item code e.g. 100 00001
+            "ID",                   // 0, hidden internal key
+            "Item ID",              // 1, spec item code e.g. 100 00001
             "Description",          // 2
             "Package Type",         // 3
             "Unit",                 // 4
@@ -120,7 +120,7 @@ public class StockManagementUI extends JPanel {
             "Package Cost (£)",     // 6
             "Availability (packs)", // 7
             "Stock Limit (packs)",  // 8
-            "Retail Price (£)",     // 9 — calculated: bulk cost × (1 + markup)
+            "Retail Price (£)",     // 9, calculated from bulk cost with markup
             "Status"                // 10
         };
 
@@ -135,7 +135,7 @@ public class StockManagementUI extends JPanel {
         stockTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         UITheme.styleTable(stockTable);
 
-        // hide the internal id column — still in model for lookups
+        // hide the internal id column, still used for lookups
         stockTable.getColumnModel().getColumn(COL_ID).setMinWidth(0);
         stockTable.getColumnModel().getColumn(COL_ID).setMaxWidth(0);
         stockTable.getColumnModel().getColumn(COL_ID).setWidth(0);
@@ -227,7 +227,7 @@ public class StockManagementUI extends JPanel {
         }
     }
 
-    // edit dialog — all editable fields including new spec columns
+    // shows the edit dialog for a selected stock item, including all spec fields
     private void handleEditItem() {
         int selectedRow = stockTable.getSelectedRow();
         if (selectedRow < 0) {
@@ -236,18 +236,18 @@ public class StockManagementUI extends JPanel {
         }
 
         int modelRow = stockTable.convertRowIndexToModel(selectedRow);
-        int itemId   = (int) tableModel.getValueAt(modelRow, COL_ID);
-        String name  = (String) tableModel.getValueAt(modelRow, COL_NAME);
+        int itemId = (int) tableModel.getValueAt(modelRow, COL_ID);
+        String name = (String) tableModel.getValueAt(modelRow, COL_NAME);
 
-        JTextField itemCodeField   = new JTextField(tableModel.getValueAt(modelRow, COL_ITEM_CODE).toString());
-        JTextField nameField       = new JTextField(name);
-        JTextField pkgTypeField    = new JTextField(tableModel.getValueAt(modelRow, COL_PKG_TYPE).toString());
-        JTextField unitField       = new JTextField(tableModel.getValueAt(modelRow, COL_UNIT).toString());
-        JTextField uppField        = new JTextField(tableModel.getValueAt(modelRow, COL_UPP).toString());
-        JTextField bulkCostField   = new JTextField(tableModel.getValueAt(modelRow, COL_BULK_COST).toString());
-        JTextField thresholdField  = new JTextField(tableModel.getValueAt(modelRow, COL_THRESHOLD).toString());
+        JTextField itemCodeField = new JTextField(tableModel.getValueAt(modelRow, COL_ITEM_CODE).toString());
+        JTextField nameField = new JTextField(name);
+        JTextField pkgTypeField = new JTextField(tableModel.getValueAt(modelRow, COL_PKG_TYPE).toString());
+        JTextField unitField = new JTextField(tableModel.getValueAt(modelRow, COL_UNIT).toString());
+        JTextField uppField = new JTextField(tableModel.getValueAt(modelRow, COL_UPP).toString());
+        JTextField bulkCostField = new JTextField(tableModel.getValueAt(modelRow, COL_BULK_COST).toString());
+        JTextField thresholdField = new JTextField(tableModel.getValueAt(modelRow, COL_THRESHOLD).toString());
 
-        // retail price is read-only — calculated from bulk cost
+        // retail price is read-only, calculated from bulk cost
         JTextField retailPriceField = new JTextField(tableModel.getValueAt(modelRow, COL_RETAIL_PRICE).toString());
         retailPriceField.setEditable(false);
         retailPriceField.setBackground(UITheme.ROW_ALT);
@@ -270,17 +270,17 @@ public class StockManagementUI extends JPanel {
         };
 
         int result = JOptionPane.showConfirmDialog(this, fields,
-                "Edit Stock Item — " + name, JOptionPane.OK_CANCEL_OPTION);
+                "Edit Stock Item: " + name, JOptionPane.OK_CANCEL_OPTION);
         if (result != JOptionPane.OK_OPTION) return;
 
         try {
-            String newCode    = itemCodeField.getText().trim();
-            String newName    = nameField.getText().trim();
+            String newCode = itemCodeField.getText().trim();
+            String newName = nameField.getText().trim();
             String newPkgType = pkgTypeField.getText().trim();
-            String newUnit    = unitField.getText().trim();
-            int    newUpp     = Integer.parseInt(uppField.getText().trim());
-            double newCost    = Double.parseDouble(bulkCostField.getText().trim());
-            int    newThresh  = Integer.parseInt(thresholdField.getText().trim());
+            String newUnit = unitField.getText().trim();
+            int newUpp = Integer.parseInt(uppField.getText().trim());
+            double newCost = Double.parseDouble(bulkCostField.getText().trim());
+            int newThresh = Integer.parseInt(thresholdField.getText().trim());
 
             if (newName.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Description cannot be blank.", "Blank input", JOptionPane.ERROR_MESSAGE);
@@ -304,7 +304,7 @@ public class StockManagementUI extends JPanel {
         }
     }
 
-    // direct SQL update — updates all spec fields
+    // updates all spec fields for the given stock item
     public void updateStockItem(int itemId, String itemCode, String name, String packageType,
                                 String unit, int unitsPerPack, double bulkCost, int threshold) {
         String sql = "UPDATE stock SET item_code = ?, name = ?, package_type = ?, unit = ?, " +
@@ -325,7 +325,7 @@ public class StockManagementUI extends JPanel {
         }
     }
 
-    // handles both increase and decrease — prompts for amount
+    // handles both increase and decrease, prompts for amount
     private void handleAdjustStock(boolean isIncrease) {
         int selectedRow = stockTable.getSelectedRow();
         if (selectedRow == -1) {
@@ -334,9 +334,9 @@ public class StockManagementUI extends JPanel {
         }
 
         int modelRow = stockTable.convertRowIndexToModel(selectedRow);
-        int itemId   = (int) tableModel.getValueAt(modelRow, COL_ID);
+        int itemId = (int) tableModel.getValueAt(modelRow, COL_ID);
         String itemName = (String) tableModel.getValueAt(modelRow, COL_NAME);
-        String action   = isIncrease ? "increase" : "decrease";
+        String action = isIncrease ? "increase" : "decrease";
 
         String input = JOptionPane.showInputDialog(this,
             "Enter amount to " + action + " for: " + itemName,
@@ -371,15 +371,15 @@ public class StockManagementUI extends JPanel {
         }
     }
 
-    // dialog to add a brand new stock item — all spec fields included
+    // dialog to add a new stock item, includes all spec fields
     private void handleAddItem() {
-        JTextField itemCodeField  = new JTextField();
-        JTextField nameField      = new JTextField();
-        JTextField pkgTypeField   = new JTextField("Box");
-        JTextField unitField      = new JTextField("Caps");
-        JTextField uppField       = new JTextField("20");
-        JTextField qtyField       = new JTextField();
-        JTextField bulkCostField  = new JTextField();
+        JTextField itemCodeField = new JTextField();
+        JTextField nameField = new JTextField();
+        JTextField pkgTypeField = new JTextField("Box");
+        JTextField unitField = new JTextField("Caps");
+        JTextField uppField = new JTextField("20");
+        JTextField qtyField = new JTextField();
+        JTextField bulkCostField = new JTextField();
         JTextField thresholdField = new JTextField("10");
 
         Object[] fields = {
@@ -397,14 +397,14 @@ public class StockManagementUI extends JPanel {
         if (result != JOptionPane.OK_OPTION) return;
 
         try {
-            String itemCode   = itemCodeField.getText().trim();
-            String name       = nameField.getText().trim();
-            String pkgType    = pkgTypeField.getText().trim();
-            String unit       = unitField.getText().trim();
-            int    upp        = Integer.parseInt(uppField.getText().trim());
-            int    qty        = Integer.parseInt(qtyField.getText().trim());
-            double bulkCost   = Double.parseDouble(bulkCostField.getText().trim());
-            int    threshold  = Integer.parseInt(thresholdField.getText().trim());
+            String itemCode = itemCodeField.getText().trim();
+            String name = nameField.getText().trim();
+            String pkgType = pkgTypeField.getText().trim();
+            String unit = unitField.getText().trim();
+            int upp = Integer.parseInt(uppField.getText().trim());
+            int qty = Integer.parseInt(qtyField.getText().trim());
+            double bulkCost = Double.parseDouble(bulkCostField.getText().trim());
+            int threshold = Integer.parseInt(thresholdField.getText().trim());
 
             if (name.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Description cannot be blank.", "Blank input", JOptionPane.ERROR_MESSAGE);
@@ -424,7 +424,7 @@ public class StockManagementUI extends JPanel {
         }
     }
 
-    // remove selected item after confirmation
+    // removes the selected item after confirmation
     private void handleRemoveItem() {
         int selectedRow = stockTable.getSelectedRow();
         if (selectedRow == -1) {
@@ -433,7 +433,7 @@ public class StockManagementUI extends JPanel {
         }
 
         int modelRow = stockTable.convertRowIndexToModel(selectedRow);
-        int itemId   = (int) tableModel.getValueAt(modelRow, COL_ID);
+        int itemId = (int) tableModel.getValueAt(modelRow, COL_ID);
         String itemName = (String) tableModel.getValueAt(modelRow, COL_NAME);
 
         int confirm = JOptionPane.showConfirmDialog(this,

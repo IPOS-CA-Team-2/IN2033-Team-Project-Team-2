@@ -24,11 +24,11 @@ public class MockPuAdapter implements IPuStockUpdater {
 
     @Override
     public boolean applyOnlineSale(OnlineSale sale) {
-        // processOnlineSale handles both stock deduction and persistence
+        // processOnlineSale handles both stock deduction and saving to the database
         return onlineSaleService.processOnlineSale(sale);
     }
 
-    // convenience method for demo — generates a fake pu order id and wraps the items
+    // convenience method for demo, generates a fake PU order id and wraps the items
     public boolean simulateSale(List<OnlineSaleItem> items, String customerEmail) {
         String fakeOrderId = "PU-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         OnlineSale sale = new OnlineSale(fakeOrderId, LocalDate.now(), customerEmail, items);
@@ -37,9 +37,8 @@ public class MockPuAdapter implements IPuStockUpdater {
 
     @Override
     public CardClearanceResult clearCardPayment(CardDetails card, double amount) {
-        // simulate pu payment processor clearance
-        // in real integration this calls pu's payment endpoint
-        // first four "0000" simulates a declined card for demo purposes
+        // simulate PU payment processor clearance
+        // card starting with "0000" simulates a declined card for demo purposes
         if ("0000".equals(card.getFirstFourDigits())) {
             return new CardClearanceResult(false, null, "Card declined by payment processor");
         }
@@ -49,17 +48,17 @@ public class MockPuAdapter implements IPuStockUpdater {
 
     @Override
     public void notifyProductDeleted(int caItemId) {
-        System.out.println("[MockPuAdapter] notifyProductDeleted caItemId=" + caItemId + " (no-op in mock mode)");
+        System.err.println("[MockPuAdapter] notifyProductDeleted caItemId=" + caItemId + " (no-op in mock mode)");
     }
 
     @Override
     public void notifyStockUpdated(StockItem item) {
-        System.out.println("[MockPuAdapter] notifyStockUpdated caItemId=" + item.getItemId() + " (no-op in mock mode)");
+        System.err.println("[MockPuAdapter] notifyStockUpdated caItemId=" + item.getItemId() + " (no-op in mock mode)");
     }
 
     @Override
     public void notifyOrderStatusUpdate(String puOrderId, String caStatus) {
-        System.out.println("[MockPuAdapter] notifyOrderStatusUpdate " + puOrderId + " -> " + caStatus + " (no-op in mock mode)");
+        System.err.println("[MockPuAdapter] notifyOrderStatusUpdate " + puOrderId + " -> " + caStatus + " (no-op in mock mode)");
     }
 
 }

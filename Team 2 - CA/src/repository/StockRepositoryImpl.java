@@ -117,7 +117,7 @@ public class StockRepositoryImpl implements StockRepository {
     public boolean save(StockItem item) {
         if (item == null) return false;
 
-        // insert or replace — handles both new items and updates
+        // insert or replace, handles both new items and updates
         String sql = "INSERT OR REPLACE INTO stock " +
                      "(id, item_code, name, package_type, unit, units_per_pack, quantity, bulk_cost, markup_rate, vat_rate, low_stock_threshold) " +
                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -125,7 +125,7 @@ public class StockRepositoryImpl implements StockRepository {
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            // id 0 means new item — let sqlite auto-generate the id
+            // id 0 means new item, let sqlite auto-generate the id
             if (item.getItemId() == 0) {
                 stmt.setNull(1, java.sql.Types.INTEGER);
             } else {
