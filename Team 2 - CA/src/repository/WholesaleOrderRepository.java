@@ -9,7 +9,7 @@ import java.util.List;
 // data access for wholesale orders placed with infopharma (sa)
 public interface WholesaleOrderRepository {
 
-    // persist a new order and its lines — returns the generated local order id
+    // save a new order and its lines, returns the generated local order id
     int save(WholesaleOrder order);
 
     // load a single order with its lines by local id

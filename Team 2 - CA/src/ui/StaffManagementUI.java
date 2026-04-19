@@ -7,71 +7,52 @@ import javax.swing.table.*;
 import java.awt.*;
 import java.sql.*;
 
+// staff account management screen (admin only)
+// shows all user accounts in a table, lets admins add, remove, and change roles
 public class StaffManagementUI extends JPanel {
 
     private static final String[] COLUMNS = {"ID", "Name", "Username", "Password", "Role"};
     private DefaultTableModel tableModel;
     private JTable table;
-    private boolean passwordsVisible = false; // password toggle defaulted to false
+    private boolean passwordsVisible = false;
 
     public StaffManagementUI() {
         setLayout(new BorderLayout());
         setOpaque(false);
 
-
         add(topSection(), BorderLayout.NORTH);
         add(mainSection(), BorderLayout.CENTER);
         add(bottomSection(), BorderLayout.SOUTH);
         loadUsers();
-        hidePassword(); // hide paswords by deauglt
+        hidePassword();
     }
 
     private JPanel topSection() {
-        // adding a search bar at the very top to search for specific users by their name, username or role
-        // returns everything that matches
-
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(UITheme.DARK_HEADER);
         header.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
 
-
-        // adds management text on the left of the top bar
-        // add a filler cause it looks empty without it
         JLabel titleLabel = new JLabel("Staff Management");
         titleLabel.setFont(UITheme.FONT_TITLE);
         titleLabel.setForeground(Color.WHITE);
 
-
-
-        // adds search bar on the right of the top bar
         JLabel searchLabel = new JLabel("Search: ");
         searchLabel.setFont(UITheme.FONT_BOLD);
         searchLabel.setForeground(Color.WHITE);
-
-
 
         JTextField searchField = new JTextField(18);
         UITheme.styleTextField(searchField);
 
         searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            public void insertUpdate (javax.swing.event.DocumentEvent e) {
-                filterTable(searchField.getText());
-            }
-
-            public void removeUpdate (javax.swing.event.DocumentEvent e) {
-                filterTable(searchField.getText());
-            }
-
-            public void changedUpdate(javax.swing.event.DocumentEvent e) {
-                filterTable(searchField.getText());
-            }
+            public void insertUpdate(javax.swing.event.DocumentEvent e)  { filterTable(searchField.getText()); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e)  { filterTable(searchField.getText()); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { filterTable(searchField.getText()); }
         });
 
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         searchPanel.setOpaque(false);
         searchPanel.add(searchLabel);
         searchPanel.add(searchField);
-
 
         header.add(searchPanel, BorderLayout.EAST);
         header.add(titleLabel, BorderLayout.WEST);
@@ -107,12 +88,12 @@ public class StaffManagementUI extends JPanel {
     private JPanel mainSection() {
         tableModel = new DefaultTableModel(COLUMNS, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
-        }; // generate the tables for the main user display thingy
+        };
 
         table = new JTable(tableModel);
         UITheme.styleTable(table);
 
-        // column displays for the things
+        // hide the ID column, set widths for the visible columns
         table.getColumnModel().getColumn(0).setMinWidth(0);
         table.getColumnModel().getColumn(0).setMaxWidth(0);
         table.getColumnModel().getColumn(0).setWidth(0);
@@ -121,8 +102,7 @@ public class StaffManagementUI extends JPanel {
         table.getColumnModel().getColumn(3).setPreferredWidth(160); // password
         table.getColumnModel().getColumn(4).setPreferredWidth(130); // role
 
-
-        // the alternative grey white rows, easier to see
+        // alternating row colours
         DefaultTableCellRenderer altRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object value, boolean sel, boolean focus, int row, int col) {
@@ -139,42 +119,32 @@ public class StaffManagementUI extends JPanel {
         table.getColumnModel().getColumn(1).setCellRenderer(altRenderer);
         table.getColumnModel().getColumn(2).setCellRenderer(altRenderer);
 
-
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getViewport().setBackground(Color.WHITE);
 
         JPanel panel = new JPanel(new BorderLayout());
         panel.setOpaque(false);
-
-
         panel.setBorder(BorderFactory.createEmptyBorder(12, 16, 0, 16));
         panel.add(scroll, BorderLayout.CENTER);
 
-
         return panel;
-
     }
 
     private JPanel bottomSection() {
-        // add the add user and delete user buttons
-        
         JButton addBtn = UITheme.successBtn("Add User");
         JButton removeBtn = UITheme.dangerBtn("Remove Selected");
 
         addBtn.addActionListener(e -> showAddUserDialog());
         removeBtn.addActionListener(e -> removeSelectedUser());
 
-
-        // promote and demote buttons for staff
         JButton promoteBtn = UITheme.successBtn("Promote");
         JButton demoteBtn  = UITheme.dangerBtn("Demote");
-
 
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         btnRow.setOpaque(false);
 
-        // true -> promote, false -> demote
+        // true = promote, false = demote
         promoteBtn.addActionListener(e -> handleRoleChange(true));
         demoteBtn.addActionListener(e -> handleRoleChange(false));
 
@@ -233,31 +203,22 @@ public class StaffManagementUI extends JPanel {
     }
 
     public void hidePassword() {
-        // put it in a seperate one cause it was causing issues and not triggering at the start for some reason idk why
-        //check column three again which is the pasword one
+        // replace actual password text with asterisks in the table
         table.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object value, boolean sel, boolean focus, int row, int col) {
                 Component c = super.getTableCellRendererComponent(t, value != null ? "**************" : "", sel, focus, row, col);
-                // fix color issue
                 if (!sel) {
                     c.setBackground(row % 2 == 0 ? Color.WHITE : UITheme.ROW_ALT);
                     c.setForeground(Color.BLACK);
                 }
-
                 return c;
             }
         });
     }
 
 
-
-
-
     private void handleRoleChange(boolean promote) {
-        // takes in a bool so.. , true -> promote, false -> demote
-
-        // must select user by clicking first
         int viewRow = table.getSelectedRow();
         if (viewRow < 0) {
             showError("Please select a user first.");
@@ -306,9 +267,9 @@ public class StaffManagementUI extends JPanel {
                 "do you want to change " + username + "'s role from " + role + " to " + newRole + "?",
                 "confirm", JOptionPane.YES_NO_OPTION);
 
-        if (confirm != JOptionPane.YES_OPTION) { // cancelled change exit out
+        if (confirm != JOptionPane.YES_OPTION) {
             return;
-        };
+        }
 
         // db change
         String sql = "UPDATE users SET role = ? WHERE id = ?";
@@ -322,9 +283,6 @@ public class StaffManagementUI extends JPanel {
             showError("error changing role: " + ex.getMessage());
         }
     }
-
-
-
 
 
     private void loadUsers() {
@@ -433,22 +391,16 @@ public class StaffManagementUI extends JPanel {
         dialog.setVisible(true);
     }
 
-
-
     private void removeSelectedUser() {
-        // remove the selected user selection will be done by clicking on it
-
         int viewRow = table.getSelectedRow();
         if (viewRow < 0) {
             showError("No user has been selected");
             return;
-
         }
 
         int modelRow = table.convertRowIndexToModel(viewRow);
         int id = (int) tableModel.getValueAt(modelRow, 0);
-
-        String username = (String) tableModel.getValueAt(modelRow, 2); // get username from table
+        String username = (String) tableModel.getValueAt(modelRow, 2);
 
         int confirm = JOptionPane.showConfirmDialog(this, "Remove user: " + username, "Confirm Removal", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
@@ -479,9 +431,9 @@ public class StaffManagementUI extends JPanel {
             return true;
 
         } catch (SQLException ex) {
-            if (ex.getMessage().contains("UNIQUE")) { // if username is already taken show error
+            if (ex.getMessage().contains("UNIQUE")) {
                 showError("Username " + username + " is already taken");
-            } else { // db error
+            } else {
                 showError("Error could not insert user: " + ex.getMessage());
             }
 
@@ -496,8 +448,6 @@ public class StaffManagementUI extends JPanel {
 
     private void showError(String message, Component parent) {
         JOptionPane.showMessageDialog(parent, message, "Error", JOptionPane.ERROR_MESSAGE);
-
     }
-
 
 }

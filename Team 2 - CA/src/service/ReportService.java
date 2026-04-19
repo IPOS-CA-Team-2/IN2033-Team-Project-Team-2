@@ -10,21 +10,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-// central reporting service — gathers data from existing repos and returns typed report objects
-// all report logic lives here so ui classes stay thin
+// central reporting service, gathers data from the repos and returns typed report objects
+// all report logic lives here so the UI classes stay thin
 public class ReportService {
 
-    private final SaleRepository          saleRepo;
-    private final CustomerRepository      customerRepo;
-    private final StockService            stockService;
+    private final SaleRepository saleRepo;
+    private final CustomerRepository customerRepo;
+    private final StockService stockService;
     private final WholesaleOrderRepository orderRepo;
 
     public ReportService(SaleRepository saleRepo, CustomerRepository customerRepo,
                          StockService stockService, WholesaleOrderRepository orderRepo) {
-        this.saleRepo     = saleRepo;
+        this.saleRepo = saleRepo;
         this.customerRepo = customerRepo;
         this.stockService = stockService;
-        this.orderRepo    = orderRepo;
+        this.orderRepo = orderRepo;
     }
 
     // data classes returned by each report method
@@ -50,9 +50,9 @@ public class ReportService {
     }
 
     public static class SaleRow {
-        public final int    saleId;
+        public final int saleId;
         public final LocalDate date;
-        public final String customerLabel;  // "Walk-in" or "Acct #X"
+        public final String customerLabel; // "Walk-in" or "Acct #X"
         public final String paymentMethod;
         public final double total;
 
@@ -73,10 +73,10 @@ public class ReportService {
     }
 
     public static class StockRow {
-        public final String  name;
-        public final int     quantity;
-        public final double  unitPriceIncVat;
-        public final double  stockValue;
+        public final String name;
+        public final int quantity;
+        public final double unitPriceIncVat;
+        public final double stockValue;
         public final boolean lowStock;
 
         StockRow(String name, int quantity, double unitPriceIncVat, double stockValue, boolean lowStock) {
@@ -87,8 +87,8 @@ public class ReportService {
 
     public static class DebtReport {
         public final LocalDate generatedAt;
-        public final double    totalDebt;
-        public final int       debtorCount;
+        public final double totalDebt;
+        public final int debtorCount;
         public final List<DebtRow> rows;
 
         DebtReport(LocalDate generatedAt, double totalDebt, int debtorCount, List<DebtRow> rows) {
@@ -98,12 +98,12 @@ public class ReportService {
     }
 
     public static class DebtRow {
-        public final String        accountNumber;
-        public final String        name;
+        public final String accountNumber;
+        public final String name;
         public final AccountStatus status;
-        public final double        balance;
-        public final double        creditLimit;
-        public final double        utilisationPct;
+        public final double balance;
+        public final double creditLimit;
+        public final double utilisationPct;
 
         DebtRow(String accountNumber, String name, AccountStatus status,
                 double balance, double creditLimit, double utilisationPct) {
@@ -115,11 +115,11 @@ public class ReportService {
     public TurnoverReport generateTurnoverReport(LocalDate from, LocalDate to) {
         List<Sale> sales = saleRepo.findByDateRange(from, to);
 
-        int    saleCount    = sales.size();
+        int saleCount = sales.size();
         double totalRevenue = 0;
-        int    cashCount    = 0;
-        int    cardCount    = 0;
-        List<SaleRow> rows  = new ArrayList<>();
+        int cashCount = 0;
+        int cardCount = 0;
+        List<SaleRow> rows = new ArrayList<>();
 
         for (Sale s : sales) {
             totalRevenue += s.getTotalIncVat();
@@ -135,7 +135,7 @@ public class ReportService {
                 .filter(o -> !o.getOrderDate().isBefore(from) && !o.getOrderDate().isAfter(to))
                 .collect(Collectors.toList());
 
-        int    orderCount = orders.size();
+        int orderCount = orders.size();
         double orderTotal = orders.stream().mapToDouble(WholesaleOrder::getTotalValue).sum();
 
         return new TurnoverReport(from, to, saleCount, totalRevenue, cashCount, cardCount, orderCount, orderTotal, rows);
@@ -146,8 +146,8 @@ public class ReportService {
         public final String name;
         public final String packageType;
         public final String unit;
-        public final int    quantity;
-        public final int    threshold;
+        public final int quantity;
+        public final int threshold;
 
         LowStockRow(String itemCode, String name, String packageType, String unit, int quantity, int threshold) {
             this.itemCode = itemCode; this.name = name; this.packageType = packageType;
@@ -167,8 +167,8 @@ public class ReportService {
 
     // returns only items that are at or below their stock threshold
     public LowStockReport generateLowStockReport() {
-        List<StockItem>    items = stockService.getAllStock();
-        List<LowStockRow>  rows  = new ArrayList<>();
+        List<StockItem> items = stockService.getAllStock();
+        List<LowStockRow> rows = new ArrayList<>();
 
         for (StockItem item : items) {
             if (item.isLowStock()) {
@@ -183,14 +183,14 @@ public class ReportService {
         return new LowStockReport(LocalDate.now(), rows.size(), rows);
     }
 
-    // stock report is always current — no date range
+    // stock report shows the current state, no date range needed
     public StockReport generateStockReport() {
         List<StockItem> items = stockService.getAllStock();
-        List<StockRow>  rows  = new ArrayList<>();
+        List<StockRow> rows = new ArrayList<>();
         double total = 0;
 
         for (StockItem item : items) {
-            double unitPrice  = item.getPriceIncVat();
+            double unitPrice = item.getPriceIncVat();
             double stockValue = item.getQuantity() * unitPrice;
             total += stockValue;
             rows.add(new StockRow(item.getName(), item.getQuantity(), unitPrice, stockValue, item.isLowStock()));
@@ -203,12 +203,12 @@ public class ReportService {
     // would need payment timestamps to do a proper period report but we dont store those
     public DebtReport generateDebtReport() {
         List<Customer> customers = customerRepo.findAll();
-        List<DebtRow>  rows      = new ArrayList<>();
-        double totalDebt  = 0;
-        int    debtorCount = 0;
+        List<DebtRow> rows = new ArrayList<>();
+        double totalDebt = 0;
+        int debtorCount = 0;
 
         for (Customer c : customers) {
-            double bal  = c.getCurrentBalance();
+            double bal = c.getCurrentBalance();
             double util = c.getCreditLimit() > 0 ? (bal / c.getCreditLimit() * 100.0) : 0.0;
             rows.add(new DebtRow(c.getAccountNumber(), c.getName(), c.getStatus(), bal, c.getCreditLimit(), util));
             if (bal > 0) { totalDebt += bal; debtorCount++; }

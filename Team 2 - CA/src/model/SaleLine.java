@@ -1,6 +1,6 @@
 package model;
 
-// represents one line item in a sale — one product, a quantity, and the price at time of sale
+// represents one line item in a sale: one product, a quantity, and the price at time of sale
 // price is captured at sale time so historical records stay accurate if prices change later
 public class SaleLine {
 

@@ -11,9 +11,9 @@ import com.google.gson.JsonSerializer;
 import java.lang.reflect.Type;
 import java.time.LocalDate;
 
-// gson type adapter — converts LocalDate to/from ISO-8601 strings ("YYYY-MM-DD")
+// gson type adapter for LocalDate, converts to/from ISO-8601 strings ("YYYY-MM-DD")
 // needed because gson doesn't handle java.time types out of the box
-// registered in both HttpSaGateway and CaApiServer when building their Gson instances
+// registered in HttpSaGateway and CaApiServer when building their Gson instances
 public class LocalDateAdapter implements JsonDeserializer<LocalDate>, JsonSerializer<LocalDate> {
 
     @Override

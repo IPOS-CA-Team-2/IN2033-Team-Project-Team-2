@@ -33,7 +33,7 @@ public class ReminderService {
         for (Customer customer : customers) {
 
             // --- 1st reminder ---
-            // if (status_1stReminder = 'due') → generate, mark sent, schedule 2nd for +15 days
+            // if status_1stReminder is 'due': generate it, mark as sent, schedule 2nd for +15 days
             if ("due".equals(customer.getStatus1stReminder())) {
                 generated.add(buildReminder(customer, Reminder.Type.FIRST, today));
                 customerRepository.updateStatus(
@@ -48,7 +48,7 @@ public class ReminderService {
             }
 
             // --- 2nd reminder ---
-            // if (status_2ndReminder = 'due') AND date_2ndReminder <= today → generate
+            // if status_2ndReminder is 'due' and date_2ndReminder is today or earlier: generate it
             if ("due".equals(customer.getStatus2ndReminder())) {
                 // re-fetch so we see the updated date_2ndReminder if 1st was just processed above
                 Customer c = customerRepository.findById(customer.getCustomerId());
@@ -74,7 +74,7 @@ public class ReminderService {
         return generated;
     }
 
-    // generate a single reminder for a specific customer — for preview or manual resend
+    // generate a single reminder for a specific customer, for preview or manual resend
     public Reminder generateReminder(Customer customer, Reminder.Type type) {
         return buildReminder(customer, type, LocalDate.now());
     }

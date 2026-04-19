@@ -26,24 +26,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 
-// embedded http server on port 8081 — listens for inbound pushes from sa and pu
-// uses com.sun.net.httpserver which is built into the jdk — no extra dependencies
-// runs on a single daemon thread so it doesn't prevent the jvm from exiting normally
+// embedded HTTP server on port 8081, listens for inbound pushes from SA and PU
+// uses com.sun.net.httpserver (built into the JDK, no extra dependencies)
+// runs on a single daemon thread so it doesn't block JVM shutdown
 public class CaApiServer {
 
     private final WholesaleOrderService orderService;
-    private final IPuStockUpdater       puAdapter;
-    private final Runnable              onOrderUpdated; // called after sa status push
-    private final Runnable              onStockChanged; // called after pu sale push
-    private final Gson                  gson;
-    private HttpServer                  server;
+    private final IPuStockUpdater puAdapter;
+    private final Runnable onOrderUpdated; // called after SA status push
+    private final Runnable onStockChanged; // called after PU sale push
+    private final Gson gson;
+    private HttpServer server;
 
     public CaApiServer(WholesaleOrderService orderService,
                        IPuStockUpdater       puAdapter,
                        Runnable              onOrderUpdated,
                        Runnable              onStockChanged) {
-        this.orderService   = orderService;
-        this.puAdapter      = puAdapter;
+        this.orderService = orderService;
+        this.puAdapter = puAdapter;
         this.onOrderUpdated = onOrderUpdated;
         this.onStockChanged = onStockChanged;
         this.gson = new GsonBuilder()
@@ -52,7 +52,7 @@ public class CaApiServer {
     }
 
     // bind to port 8081 and start accepting requests
-    // if port is already in use, logs a warning and continues in degraded mode
+    // if the port is already in use, logs a warning and continues without the inbound server
     public void start() {
         try {
             server = HttpServer.create(new InetSocketAddress(8081), 0);
@@ -65,7 +65,7 @@ public class CaApiServer {
                 return t;
             }));
             server.start();
-            System.out.println("[CaApiServer] Listening on port 8081 (/order-update, /online-sale, /stock)");
+            System.err.println("[CaApiServer] Listening on port 8081 (/order-update, /online-sale, /stock)");
         } catch (BindException e) {
             System.err.println("[CaApiServer] Port 8081 already in use — running without inbound server");
         } catch (IOException e) {
@@ -77,9 +77,9 @@ public class CaApiServer {
         if (server != null) server.stop(0);
     }
 
-    // POST /order-update — SA calls this when an order status changes
+    // POST /order-update - SA calls this when an order status changes
     // body for most statuses: { "orderId": <SA_ORDER_ID>, "status": "ACCEPTED" }
-    // body for DISPATCHED also includes: courierName, courierReference, dispatchDate, expectedDeliveryDate
+    // DISPATCHED also includes: courierName, courierReference, dispatchDate, expectedDeliveryDate
     private void handleOrderUpdate(HttpExchange exchange) throws IOException {
         if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
             exchange.sendResponseHeaders(405, -1);
@@ -90,7 +90,7 @@ public class CaApiServer {
             int         saId      = json.get("orderId").getAsInt();
             String      statusStr = json.get("status").getAsString();
 
-            // parse optional shipping fields — only present when status = DISPATCHED
+            // parse optional shipping fields, only present when status = DISPATCHED
             String    courierName  = json.has("courierName")          ? json.get("courierName").getAsString()          : null;
             String    courierRef   = json.has("courierReference")      ? json.get("courierReference").getAsString()      : null;
             LocalDate dispatchDate = json.has("dispatchDate")          ? LocalDate.parse(json.get("dispatchDate").getAsString())         : null;
@@ -109,7 +109,7 @@ public class CaApiServer {
         }
     }
 
-    // POST /online-sale — PU calls this when a member completes an order
+    // POST /online-sale - PU calls this when a member completes an order
     // expected body: { "puOrderId":"PU-1", "receivedDate":"2026-04-11",
     //                  "customerEmail":"x@x.com", "items":[{"itemId":1,"quantity":5}] }
     private void handleOnlineSale(HttpExchange exchange) throws IOException {
@@ -141,7 +141,7 @@ public class CaApiServer {
         }
     }
 
-    // GET /stock — PU calls this on catalogue load to get CA's full product list with prices
+    // GET /stock - PU calls this on catalogue load to get CA's full product list with prices
     // returns a JSON array: [{"id":1,"name":"...","quantity":5,"price":2.00,"itemCode":"100 00001"},...]
     private void handleGetStock(HttpExchange exchange) throws IOException {
         if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
@@ -169,13 +169,13 @@ public class CaApiServer {
         }
     }
 
-    // maps sa status strings to ca's OrderStatus enum
-    // sa sends ACCEPTED (not CONFIRMED) for newly placed orders — both mapped for safety
-    // sa sends PROCESSING for picking/packing — maps to BEING_PROCESSED on ca side
+    // maps SA status strings to CA's OrderStatus enum
+    // SA sends ACCEPTED for new orders, CONFIRMED is kept for safety in case of legacy calls
+    // SA sends PROCESSING for picking/packing, which maps to BEING_PROCESSED on the CA side
     private OrderStatus mapSaStatus(String saStatus) {
         return switch (saStatus.toUpperCase()) {
             case "PENDING"    -> OrderStatus.PENDING;
-            case "CONFIRMED"  -> OrderStatus.ACCEPTED;       // legacy — kept for safety
+            case "CONFIRMED"  -> OrderStatus.ACCEPTED;       // legacy, kept for safety
             case "ACCEPTED"   -> OrderStatus.ACCEPTED;       // sa's actual status for new orders
             case "PROCESSING" -> OrderStatus.BEING_PROCESSED; // sa picking/packing
             case "DISPATCHED" -> OrderStatus.DISPATCHED;

@@ -23,23 +23,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// real HTTP implementation of ISaGateway — talks to the live IPOS-SA Spring Boot backend
-// swaps in for MockSaGateway when running with -Dipos.http=true
-// all local order tracking still goes through sqlite so the ca ui works even if sa is offline
+// real HTTP implementation of ISaGateway, talks to the live IPOS-SA Spring Boot backend
+// used instead of MockSaGateway when HTTP mode is enabled (-Dipos.http=true)
+// local order tracking still goes through sqlite so the CA UI works even if SA is offline
 public class HttpSaGateway implements ISaGateway {
 
-    private static final String SA_BASE     = "http://localhost:8080";
+    private static final String SA_BASE = "http://localhost:8080";
     private static final String CA_USERNAME = "ca_merchant";
     private static final String CA_PASSWORD = "ca_pass";
 
-    private final HttpClient                  httpClient;
-    private final Gson                        gson;
+    private final HttpClient httpClient;
+    private final Gson gson;
     private final WholesaleOrderRepositoryImpl repo;
-    private boolean                           loggedIn = false;
+    private boolean loggedIn = false;
 
     public HttpSaGateway() {
-        // CookieManager stores JSESSIONID automatically after login
-        // subsequent requests include the session cookie without any extra work
+        // CookieManager stores the session cookie so subsequent requests stay authenticated
         CookieManager cookieManager = new CookieManager();
         this.httpClient = HttpClient.newBuilder()
                 .cookieHandler(cookieManager)
@@ -51,8 +50,8 @@ public class HttpSaGateway implements ISaGateway {
         this.repo = new WholesaleOrderRepositoryImpl();
     }
 
-    // authenticate with sa using the ca_merchant account seeded in sa's DataBootstrap
-    // must be called once before any other method — Main.main() calls this on startup
+    // authenticate with SA using the ca_merchant account seeded in SA's DataBootstrap
+    // needs to be called once before anything else, Main.main() does this on startup
     public boolean login() {
         try {
             JsonObject body = new JsonObject();
@@ -68,7 +67,7 @@ public class HttpSaGateway implements ISaGateway {
             HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
             loggedIn = resp.statusCode() == 200;
 
-            if (loggedIn) System.out.println("[HttpSaGateway] Logged in to SA successfully");
+            if (loggedIn) System.err.println("[HttpSaGateway] Logged in to SA successfully");
             else          System.err.println("[HttpSaGateway] SA login failed — status " + resp.statusCode());
 
             return loggedIn;
@@ -78,8 +77,8 @@ public class HttpSaGateway implements ISaGateway {
         }
     }
 
-    // submit a wholesale order to sa and store it locally
-    // if sa is unreachable, the local record is still saved for audit purposes
+    // submit a wholesale order to SA and store it locally
+    // if SA is unreachable the local record is still saved for audit purposes
     @Override
     public WholesaleOrder submitOrder(List<OrderLine> lines) {
         // save locally first so we always have a record
@@ -125,7 +124,7 @@ public class HttpSaGateway implements ISaGateway {
                 int saOrderId = saOrder.get("id").getAsInt();
                 repo.updateSaOrderId(localId, saOrderId);
                 saved.setSaOrderId(saOrderId);
-                System.out.println("[HttpSaGateway] Order submitted to SA, SA id=" + saOrderId);
+                System.err.println("[HttpSaGateway] Order submitted to SA, SA id=" + saOrderId);
             } else {
                 System.err.println("[HttpSaGateway] SA rejected order — " + resp.statusCode() + ": " + resp.body());
             }
@@ -136,20 +135,20 @@ public class HttpSaGateway implements ISaGateway {
         return saved;
     }
 
-    // load from local sqlite — source of truth for the ca side
+    // load from local sqlite, source of truth for the CA side
     @Override
     public WholesaleOrder getOrderById(int orderId) {
         return repo.findById(orderId);
     }
 
-    // load from local sqlite — newest first
+    // load from local sqlite, newest first
     @Override
     public List<WholesaleOrder> getOrderHistory() {
         return repo.findAll();
     }
 
-    // sa pushes status updates inbound to CaApiServer — outbound calls from ca are not needed
-    // WholesaleOrderService.receiveStatusUpdate() handles the inbound push instead
+    // SA pushes status updates to CaApiServer, so outbound calls from CA are not needed here
+    // WholesaleOrderService.receiveStatusUpdate() handles the inbound push
     @Override
     public boolean updateOrderStatus(int orderId, OrderStatus status,
                                      String courier, String courierRef,
@@ -158,8 +157,8 @@ public class HttpSaGateway implements ISaGateway {
         return repo.updateStatus(orderId, status, courier, courierRef, dispatchDate, expectedDelivery);
     }
 
-    // GET /api/invoices/by-order/{saOrderId} — fetch invoice for a specific SA order
-    // returns a map of invoice fields, or null if SA is unreachable / order has no invoice
+    // GET /api/invoices/by-order/{saOrderId} - fetch invoice for a specific SA order
+    // returns a map of invoice fields, or null if SA is unreachable or order has no invoice
     @Override
     public Map<String, Object> getInvoiceByOrderId(int saOrderId) {
         if (!loggedIn) return null;
@@ -206,7 +205,7 @@ public class HttpSaGateway implements ISaGateway {
         }
     }
 
-    // GET /api/merchant-financials/balance — query outstanding balance for ca_merchant
+    // GET /api/merchant-financials/balance - query outstanding balance for ca_merchant
     // returns a map with outstandingTotal, currency, oldestUnpaidDueDate, daysElapsedSinceDue
     @Override
     public Map<String, Object> getOutstandingBalance() {

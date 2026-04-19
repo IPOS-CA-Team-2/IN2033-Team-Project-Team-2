@@ -5,6 +5,7 @@ import repository.ConfigRepository;
 import javax.swing.*;
 import java.awt.*;
 
+// screen for managers to edit pharmacy details and template text for reminders and receipts
 public class TemplatesUI extends JPanel {
 
     private final ConfigRepository configRepo = new ConfigRepository();
@@ -24,7 +25,6 @@ public class TemplatesUI extends JPanel {
         setLayout(new BorderLayout());
         setOpaque(false);
 
-        // structure shit
         add(UITheme.createHeaderPanel("Templates & Pharmacy Details"), BorderLayout.NORTH);
         add(buildTabs(), BorderLayout.CENTER);
         add(buildSaveButton(), BorderLayout.SOUTH);
@@ -33,7 +33,6 @@ public class TemplatesUI extends JPanel {
     }
 
     private JTabbedPane buildTabs() {
-        //
         JTabbedPane tabs = new JTabbedPane();
         tabs.setFont(UITheme.FONT_BOLD);
         tabs.addTab("Pharmacy Details", buildPharmacyPanel());
@@ -99,14 +98,12 @@ public class TemplatesUI extends JPanel {
     }
 
     private JPanel buildTemplatePanel(String key) {
-        // menu which will allow the manager to edit it
         JTextArea area = new JTextArea();
         area.setFont(new Font("Monospaced", Font.PLAIN, 12));
         area.setLineWrap(true);
         area.setWrapStyleWord(true);
         area.setRows(12);
 
-        // load and save reminder and recipts data
         switch (key) {
             case "reminder1":
                 reminder1Area = area;
@@ -121,8 +118,6 @@ public class TemplatesUI extends JPanel {
 
         JPanel hint = new JPanel(new FlowLayout(FlowLayout.LEFT));
         hint.setOpaque(false);
-        // list all things that are defaulted
-        // change if any extra variables are added
         JLabel hintLabel = new JLabel("Available placeholders: {customer_name}  {account_no}  {invoice_no}  {amount}  {pharmacy_name}  {date}");
         hintLabel.setFont(UITheme.FONT_SMALL);
         hintLabel.setForeground(UITheme.SECONDARY);
@@ -137,7 +132,6 @@ public class TemplatesUI extends JPanel {
     }
 
     private JPanel buildSaveButton() {
-        //confirmation button to press save
         JButton saveBtn = UITheme.successBtn("save changes");
         saveBtn.addActionListener(e -> saveValues());
 
@@ -148,7 +142,6 @@ public class TemplatesUI extends JPanel {
     }
 
     private void loadValues() {
-        // get all the values from the data base
         nameField.setText(configRepo.get("pharmacy_name"));
         addressField.setText(configRepo.get("pharmacy_address"));
         emailField.setText(configRepo.get("pharmacy_email"));
@@ -159,7 +152,6 @@ public class TemplatesUI extends JPanel {
     }
 
     private void saveValues() {
-        // save all values the manager changes to the db
         configRepo.set("pharmacy_name", nameField.getText().trim());
         configRepo.set("pharmacy_address", addressField.getText().trim());
         configRepo.set("pharmacy_email", emailField.getText().trim());

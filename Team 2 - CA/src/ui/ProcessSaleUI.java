@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-// sale screen for pharmacists — pick items, set payment, process sale, show receipt
+// sale screen for pharmacists to pick items, set payment, process sale, and show receipt
 // supports both walk-in cash customers and account holders
 public class ProcessSaleUI extends JPanel {
 
@@ -62,7 +62,6 @@ public class ProcessSaleUI extends JPanel {
             accountService
         );
 
-
         setLayout(new BorderLayout());
         setOpaque(false);
 
@@ -89,7 +88,7 @@ public class ProcessSaleUI extends JPanel {
         return panel;
     }
 
-    // account holder lookup bar — optional, leave blank for walk-in customers
+    // optional account holder lookup, leave blank for walk-in customers
     private JPanel buildAccountPanel() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         panel.setBorder(BorderFactory.createTitledBorder("Account Holder (leave blank for walk-in customer)"));
@@ -190,7 +189,7 @@ public class ProcessSaleUI extends JPanel {
 
         JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 5));
 
-        // date spinner — defaults to today, can be backdated for demo purposes
+        // date spinner, defaults to today and can be backdated
         SpinnerDateModel dateModel = new SpinnerDateModel(new Date(), null, new Date(), java.util.Calendar.DAY_OF_MONTH);
         saleDateSpinner = new JSpinner(dateModel);
         JSpinner.DateEditor dateEditor = new JSpinner.DateEditor(saleDateSpinner, "dd/MM/yyyy");
@@ -208,9 +207,9 @@ public class ProcessSaleUI extends JPanel {
         topRow.add(new JSeparator(SwingConstants.VERTICAL));
         topRow.add(new JLabel("Payment:"));
 
-        cashBtn   = new JRadioButton("Cash", true);
+        cashBtn = new JRadioButton("Cash", true);
         creditBtn = new JRadioButton("Credit Card");
-        debitBtn  = new JRadioButton("Debit Card");
+        debitBtn = new JRadioButton("Debit Card");
         ButtonGroup group = new ButtonGroup();
         group.add(cashBtn); group.add(creditBtn); group.add(debitBtn);
 
@@ -221,10 +220,10 @@ public class ProcessSaleUI extends JPanel {
         topRow.add(cashBtn); topRow.add(creditBtn); topRow.add(debitBtn);
 
         cardPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 2));
-        cardTypeField  = new JTextField(8);
+        cardTypeField = new JTextField(8);
         firstFourField = new JTextField(4);
-        lastFourField  = new JTextField(4);
-        expiryField    = new JTextField(5);
+        lastFourField = new JTextField(4);
+        expiryField = new JTextField(5);
         cardPanel.add(new JLabel("Card Type:")); cardPanel.add(cardTypeField);
         cardPanel.add(new JLabel("First 4:"));  cardPanel.add(firstFourField);
         cardPanel.add(new JLabel("Last 4:"));   cardPanel.add(lastFourField);
@@ -245,7 +244,7 @@ public class ProcessSaleUI extends JPanel {
         return outer;
     }
 
-    // look up account holder by account number
+    // looks up an account holder by account number
     private void handleAccountLookup() {
         String accountNo = accountNumberField.getText().trim();
         if (accountNo.isEmpty()) return;
@@ -267,7 +266,7 @@ public class ProcessSaleUI extends JPanel {
 
         selectedCustomer = customer;
 
-        // show status — warn if suspended or blocked if in default
+        // show account status, warn if suspended or in default
         String statusInfo = String.format("%s | Balance: £%.2f / £%.2f | Discount: %s",
             customer.getStatus(),
             customer.getCurrentBalance(),
@@ -287,7 +286,7 @@ public class ProcessSaleUI extends JPanel {
             customerInfoLabel.setForeground(new Color(0, 120, 0));
         }
 
-        // apply fixed discount automatically — lock the discount field
+        // apply fixed discount automatically and lock the discount field
         if (customer.getDiscountType() == DiscountType.FIXED) {
             discountField.setText(String.format("%.0f", customer.getFixedDiscountRate() * 100));
             discountField.setEditable(false);
@@ -437,7 +436,7 @@ public class ProcessSaleUI extends JPanel {
         }
 
         try {
-            // get chosen sale date from spinner — convert Date → LocalDateTime
+            // get chosen sale date from the spinner and convert to LocalDateTime
             Date chosenDate = (Date) saleDateSpinner.getValue();
             LocalDateTime saleDate = chosenDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
 

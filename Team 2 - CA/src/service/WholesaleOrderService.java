@@ -10,22 +10,22 @@ import repository.WholesaleOrderRepositoryImpl;
 import java.time.LocalDate;
 import java.util.List;
 
-// orchestrates wholesale ordering with infopharma (sa)
-// uses ISaGateway so the real sa integration is a drop-in swap
+// handles wholesale ordering with the SA system
+// uses ISaGateway so the real SA integration can be swapped for a different implementation
 public class WholesaleOrderService {
 
-    private final ISaGateway   gateway;
+    private final ISaGateway gateway;
     private final StockService stockService;
-    // direct repo access needed for findBySaOrderId — gateway doesn't expose this
+    // direct repo access needed for findBySaOrderId, the gateway doesn't expose this
     private final WholesaleOrderRepositoryImpl repo;
 
     public WholesaleOrderService(ISaGateway gateway, StockService stockService) {
-        this.gateway      = gateway;
+        this.gateway = gateway;
         this.stockService = stockService;
-        this.repo         = new WholesaleOrderRepositoryImpl();
+        this.repo = new WholesaleOrderRepositoryImpl();
     }
 
-    // submit a new wholesale order to sa — returns the saved order with its id
+    // submit a new wholesale order to SA, returns the saved order with its id
     public WholesaleOrder placeOrder(List<OrderLine> lines) {
         if (lines == null || lines.isEmpty()) throw new IllegalArgumentException("order must have at least one line");
         return gateway.submitOrder(lines);
@@ -42,7 +42,7 @@ public class WholesaleOrderService {
     }
 
     // mark a dispatched order as delivered and increase local stock accordingly
-    // this is the key integration point: sa delivers, ca stock goes up
+    // when SA delivers, the CA stock gets bumped up
     public void markDelivered(int orderId) {
         WholesaleOrder order = gateway.getOrderById(orderId);
         if (order == null) throw new IllegalArgumentException("order not found: " + orderId);
@@ -52,7 +52,7 @@ public class WholesaleOrderService {
             try {
                 stockService.increaseStock(line.getItemId(), line.getQuantity());
             } catch (StockException e) {
-                // log but don't fail the whole delivery — item may have been deleted
+                // log but don't fail the whole delivery, the item may have been deleted
                 System.err.println("could not increase stock for item "
                     + line.getItemId() + " on delivery: " + e.getMessage());
             }
@@ -61,10 +61,10 @@ public class WholesaleOrderService {
         gateway.updateOrderStatus(orderId, OrderStatus.DELIVERED, null, null, null, null);
     }
 
-    // called by CaApiServer when sa pushes an order status update to /order-update
-    // finds the local order by the sa-assigned id and updates its status
-    // if the new status is DELIVERED, stock is increased automatically
-    // shipping details are forwarded to the repo for DISPATCHED status
+    // called by CaApiServer when SA pushes an order status update to /order-update
+    // finds the local order by the SA-assigned id and updates its status
+    // if the new status is DELIVERED, stock gets increased automatically
+    // shipping details are saved to the repo for DISPATCHED status
     public void receiveStatusUpdate(int saOrderId, OrderStatus newStatus,
                                     String courierName, String courierRef,
                                     LocalDate dispatchDate, LocalDate expectedDelivery) {
@@ -80,7 +80,7 @@ public class WholesaleOrderService {
             repo.updateStatus(order.getOrderId(), newStatus, courierName, courierRef, dispatchDate, expectedDelivery);
         }
 
-        System.out.println("[WholesaleOrderService] Status updated for SA id=" + saOrderId + " → " + newStatus);
+        System.err.println("[WholesaleOrderService] Status updated for SA id=" + saOrderId + " → " + newStatus);
     }
 
     // convenience overload for callers that don't have shipping details (e.g. mock/test)
@@ -96,14 +96,14 @@ public class WholesaleOrderService {
         return gateway.updateOrderStatus(orderId, status, courier, courierRef, dispatchDate, expectedDelivery);
     }
 
-    // fetch invoice from SA for a given SA order id — returns null if SA unreachable
+    // fetch invoice from SA for a given SA order id, returns null if SA is unreachable
     // keys: invoiceNumber, issuedAt, dueDate, grossTotal, fixedDiscountAmount,
     //       flexibleCreditApplied, totalDue, lines (List<Map>)
     public java.util.Map<String, Object> getInvoice(int saOrderId) {
         return gateway.getInvoiceByOrderId(saOrderId);
     }
 
-    // query outstanding balance for the CA merchant account at SA — returns null if SA unreachable
+    // query outstanding balance for the CA merchant account at SA, returns null if SA is unreachable
     // keys: outstandingTotal, currency, oldestUnpaidDueDate, daysElapsedSinceDue
     public java.util.Map<String, Object> getOutstandingBalance() {
         return gateway.getOutstandingBalance();

@@ -36,7 +36,7 @@ public class Sale {
         this.cardDetails = cardDetails;
     }
 
-    // constructor for cash payments — no card details needed
+    // constructor for cash payments, no card details needed
     public Sale(int saleId, int customerId, List<SaleLine> lines,
                 LocalDateTime saleDate, double discountPercent) {
         this(saleId, customerId, lines, saleDate, discountPercent, PaymentMethod.CASH, null);

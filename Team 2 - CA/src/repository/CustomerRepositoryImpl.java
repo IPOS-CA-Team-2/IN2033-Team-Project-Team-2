@@ -210,18 +210,18 @@ public class CustomerRepositoryImpl implements CustomerRepository {
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 String last = rs.getString("account_number");
-                // parse the numeric suffix (e.g. ACC0002 → 2)
+                // parse the numeric suffix (e.g. ACC0002 gives 2)
                 int next = Integer.parseInt(last.substring(3)) + 1;
                 return String.format("ACC%04d", next);
             }
         } catch (SQLException | NumberFormatException e) {
             System.err.println("db error generating account number: " + e.getMessage());
         }
-        // no customers yet — start from 1
+        // no customers yet, start from 1
         return "ACC0001";
     }
 
-    // helper — binds all customer fields to a prepared statement (16 params)
+    // helper: binds all customer fields to a prepared statement (16 params)
     private void setCustomerParams(PreparedStatement stmt, Customer c) throws SQLException {
         stmt.setString(1, c.getName());
         stmt.setString(2, c.getContactName());

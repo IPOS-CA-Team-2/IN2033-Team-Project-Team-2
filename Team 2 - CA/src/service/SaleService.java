@@ -9,19 +9,19 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-// handles the full sale workflow — validate stock, credit check, discount, persist, update stock, return receipt
+// processes a sale from start to finish: stock check, discount, save, and receipt
 public class SaleService {
 
     private final StockService stockService;
     private final SaleRepository saleRepository;
     private final AccountService accountService;
 
-    // constructor without account service — for walk-in cash sales only
+    // constructor without account service, for walk-in cash sales only
     public SaleService(StockService stockService, SaleRepository saleRepository) {
         this(stockService, saleRepository, null);
     }
 
-    // full constructor — use this when account customer sales are needed
+    // full constructor, use this when account customer sales are needed
     public SaleService(StockService stockService, SaleRepository saleRepository, AccountService accountService) {
         if (stockService == null) throw new IllegalArgumentException("StockService cannot be null");
         if (saleRepository == null) throw new IllegalArgumentException("SaleRepository cannot be null");
@@ -37,21 +37,21 @@ public class SaleService {
         return processInternal(customerId, null, lines, discountPercent, paymentMethod, cardDetails, cashierName, LocalDateTime.now());
     }
 
-    // overload — allows a custom sale date (e.g. for backdating during demo)
+    // overload that takes a custom sale date, e.g. for backdating during demo
     public Receipt processSale(int customerId, List<SaleLine> lines, double discountPercent,
                                PaymentMethod paymentMethod, CardDetails cardDetails,
                                String cashierName, LocalDateTime saleDate) throws SaleException {
         return processInternal(customerId, null, lines, discountPercent, paymentMethod, cardDetails, cashierName, saleDate);
     }
 
-    // process a sale for an account holder — applies credit check and fixed discount
+    // process a sale for an account holder, applies credit check and fixed discount
     public Receipt processSaleForAccount(Customer customer, List<SaleLine> lines,
                                          PaymentMethod paymentMethod, CardDetails cardDetails,
                                          String cashierName) throws SaleException {
         return processSaleForAccount(customer, lines, paymentMethod, cardDetails, cashierName, LocalDateTime.now());
     }
 
-    // overload — allows a custom sale date (e.g. for backdating during demo)
+    // overload that takes a custom sale date, e.g. for backdating during demo
     public Receipt processSaleForAccount(Customer customer, List<SaleLine> lines,
                                          PaymentMethod paymentMethod, CardDetails cardDetails,
                                          String cashierName, LocalDateTime saleDate) throws SaleException {
@@ -63,12 +63,12 @@ public class SaleService {
         // build a temp sale to calculate subtotal for the credit check
         double subtotal = lines.stream().mapToDouble(SaleLine::getLineTotal).sum();
 
-        // apply fixed discount immediately — flexible is calculated at month end
+        // apply fixed discount now, flexible is calculated at month end
         double discountAmount = accountService.calculatePointOfSaleDiscount(customer, subtotal);
         double discountPercent = subtotal > 0 ? discountAmount / subtotal : 0;
         double chargeAmount = subtotal - discountAmount;
 
-        // credit check — canMakePurchase also handles status (suspended/default cant buy)
+        // credit check, canMakePurchase also blocks suspended and default accounts
         if (!accountService.canMakePurchase(customer, chargeAmount)) {
             throw new SaleException(SaleException.Reason.CREDIT_LIMIT_EXCEEDED,
                 customer.getStatus() == AccountStatus.IN_DEFAULT
@@ -113,15 +113,14 @@ public class SaleService {
             }
         }
 
-        // 3. build and persist the sale
+        // 3. build and save the sale
         Sale sale = new Sale(0, customerId, lines, saleDate,
                              discountPercent, paymentMethod, cardDetails);
-        //System.out.println("saving sale for customer " + customerId + " total=" + sale.getTotal());
         int generatedId = saleRepository.save(sale);
         if (generatedId < 0)
             throw new SaleException(SaleException.Reason.SAVE_FAILED, "failed to save the sale to the database");
 
-        // 4. deduct stock — sale is committed so log errors but dont fail
+        // 4. deduct stock, sale is already saved so just log errors and continue
         for (SaleLine line : lines) {
             try {
                 stockService.decreaseStock(line.getItemId(), line.getQuantity());
@@ -134,7 +133,7 @@ public class SaleService {
         Sale savedSale = new Sale(generatedId, customerId, lines, sale.getSaleDate(),
                                   discountPercent, paymentMethod, cardDetails);
 
-        // 6. generate receipt — invoice format for account customers, simple receipt for walk-ins
+        // 6. generate receipt: invoice format for account customers, simple receipt for walk-ins
         String receiptNumber = generateReceiptNumber(generatedId, sale.getSaleDate());
         if (customer != null) {
             return new Receipt(receiptNumber, savedSale, cashierName,

@@ -6,12 +6,12 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-// manages the sqlite connection and initialises all tables on first run
+// manages the sqlite connection and sets up all tables on first run
 public class DatabaseManager {
 
     // resolve db path regardless of working directory:
-    //   running from Team 2 - CA/  (IntelliJ default) → ipos_ca.db
-    //   running from repo root      (terminal)         → Team 2 - CA/ipos_ca.db
+    //   running from Team 2 - CA/ (IntelliJ default): ipos_ca.db
+    //   running from repo root (terminal): Team 2 - CA/ipos_ca.db
     private static final String DB_PATH = resolveDbPath();
     private static final String URL = "jdbc:sqlite:" + DB_PATH;
 
@@ -25,7 +25,7 @@ public class DatabaseManager {
         if (moduleDir.isDirectory()) {
             return "Team 2 - CA/ipos_ca.db";
         }
-        // fallback — use working directory as-is
+        // fallback, use working directory as-is
         return "ipos_ca.db";
     }
 
@@ -33,7 +33,7 @@ public class DatabaseManager {
         try {
             Class.forName("org.sqlite.JDBC");
             initialise();
-            System.out.println("db ready: " + new File(DB_PATH).getAbsolutePath());
+            System.err.println("db ready: " + new File(DB_PATH).getAbsolutePath());
         } catch (ClassNotFoundException e) {
             throw new RuntimeException("SQLite JDBC driver not found.", e);
         } catch (SQLException e) {
@@ -68,7 +68,7 @@ public class DatabaseManager {
                     ('clerk',      'Paperwork',   'Pharmacist',  'Accountant')
             """);
 
-            // stock table — bulk_cost is what we pay infopharma, markup_rate is our retail margin
+            // stock table (bulk_cost is what we pay infopharma, markup_rate is our retail margin)
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS stock (
                     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,7 +85,7 @@ public class DatabaseManager {
                 )
             """);
 
-            // customers table — account holders with credit, discount, and status tracking
+            // customers table, stores account holders with credit, discount, and status tracking
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS customers (
                     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -118,7 +118,7 @@ public class DatabaseManager {
             try { stmt.execute("ALTER TABLE customers ADD COLUMN last_payment_date TEXT"); }
             catch (SQLException ignored) { /* already present */ }
 
-            // seed account holders from spec — full scenario state baked in so no UPDATE needed on restart
+            // seed account holders from spec, full scenario state baked in so no UPDATE needed on restart
             // Eva:   £159.47 outstanding (Mar + Apr purchases, 3% discount applied), 1st reminder sent 15 Apr
             // Glynne: £0 balance (paid in full 29 Mar), last_payment_date recorded
             stmt.execute("""
@@ -136,7 +136,7 @@ public class DatabaseManager {
                      'no_need', 'no_need', NULL, NULL, NULL, '2026-03-29')
             """);
 
-            // sales table — one row per transaction
+            // sales table, one row per transaction
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS sales (
                     id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -152,7 +152,7 @@ public class DatabaseManager {
                 )
             """);
 
-            // sale_lines table — one row per item in a sale
+            // sale_lines table, one row per item in a sale
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS sale_lines (
                     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -166,7 +166,7 @@ public class DatabaseManager {
                 )
             """);
 
-            // wholesale_orders — orders placed by merchant with infopharma (sa)
+            // wholesale_orders, orders placed by merchant with infopharma (SA)
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS wholesale_orders (
                     id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -179,7 +179,7 @@ public class DatabaseManager {
                 )
             """);
 
-            // wholesale_order_lines — individual items within each wholesale order
+            // wholesale_order_lines, individual items within each wholesale order
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS wholesale_order_lines (
                     id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -192,7 +192,7 @@ public class DatabaseManager {
                 )
             """);
 
-            // online_sales — records of sale events received from ipos-pu
+            // online_sales, records of sale events received from ipos-pu
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS online_sales (
                     id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -203,7 +203,7 @@ public class DatabaseManager {
                 )
             """);
 
-            // online_sale_items — line items within each incoming pu sale
+            // online_sale_items, line items within each incoming PU sale
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS online_sale_items (
                     id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -217,7 +217,7 @@ public class DatabaseManager {
             // migration: add sa_order_id column to existing installations
             // wrapped in try-catch because sqlite throws if the column already exists
             try { stmt.execute("ALTER TABLE wholesale_orders ADD COLUMN sa_order_id INTEGER NOT NULL DEFAULT 0"); }
-            catch (SQLException ignored) { /* column already present — safe to skip */ }
+            catch (SQLException ignored) { /* column already present, safe to skip */ }
 
             // migration: add online order lifecycle columns to existing installations
             try { stmt.execute("ALTER TABLE online_sales ADD COLUMN delivery_address TEXT NOT NULL DEFAULT ''"); }
@@ -235,7 +235,7 @@ public class DatabaseManager {
             try { stmt.execute("ALTER TABLE stock ADD COLUMN units_per_pack INTEGER NOT NULL DEFAULT 0"); }
             catch (SQLException ignored) { /* already present */ }
 
-            // seed stock — all 14 products from the ipos spec catalogue
+            // seed stock, all 14 products from the ipos spec catalogue
             // ids 1-5 match sa's product ids for wholesale ordering integration
             // bulk_cost = package cost from spec, markup 30%, vat 0% (applied globally at sale)
             stmt.execute("""
@@ -273,53 +273,53 @@ public class DatabaseManager {
             stmt.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('reminder2_template', 'Dear {customer_name},\n\nSECOND REMINDER\nAccount: {account_no} | Amount: £{amount}\n\nDespite our previous reminder this balance remains unpaid. Please remit by {payment_due}.\n\nYours sincerely,\n{pharmacy_name}')");
             stmt.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('receipt_footer', 'Thank you for your purchase')");
 
-            // ── Scenario 10 — Eva Bauyer account sale, 1 March 2026 ──────────────
+            // Scenario 10: Eva Bauyer account sale, 1 March 2026
             stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, card_type, card_first_four, card_last_four, card_expiry, is_paid) VALUES (1, 1, '2026-03-01T00:00:00', 0.03, 'CREDIT_CARD', 'Visa', '4111', '1111', '12/28', 0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (1, 11, 'Ospen',       1, 21.00, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (1, 13, 'Vitamin C',   2,  2.40, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (1, 12, 'Amopen',      2, 30.00, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (1, 14, 'Vitamin B12', 2,  2.60, 0.0)");
 
-            // ── Scenario 11a — cash sale, 3 March 2026 ───────────────────────────
+            // Scenario 11a: cash sale, 3 March 2026
             stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, is_paid) VALUES (2, 0, '2026-03-03T00:00:00', 0.0, 'CASH', 1)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (2, 2, 'Aspirin', 2, 1.00, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (2, 3, 'Analgin', 3, 2.40, 0.0)");
 
-            // ── Scenario 11b — Visa credit card sale, 3 March 2026 ───────────────
+            // Scenario 11b: Visa credit card sale, 3 March 2026
             stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, card_type, card_first_four, card_last_four, card_expiry, is_paid) VALUES (3, 0, '2026-03-03T00:00:00', 0.0, 'CREDIT_CARD', 'Visa', '4111', '1111', '12/28', 1)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (3, 4, 'Celebrex, caps 100 mg', 2, 20.00, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (3, 6, 'Retin-A Tretin, 30 g',  2, 50.00, 0.0)");
 
-            // ── Scenario 11c — cash sale, 3 March 2026 ───────────────────────────
+            // Scenario 11c: cash sale, 3 March 2026
             stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, is_paid) VALUES (4, 0, '2026-03-03T00:00:00', 0.0, 'CASH', 1)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (4, 7, 'Lipitor TB, 20 mg', 1, 31.00, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (4, 8, 'Claritin CR, 60g',  1, 39.00, 0.0)");
 
-            // ── Scenario 11d — cash sale, 3 March 2026 ───────────────────────────
+            // Scenario 11d: cash sale, 3 March 2026
             stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, is_paid) VALUES (5, 0, '2026-03-03T00:00:00', 0.0, 'CASH', 1)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (5, 5,  'Celebrex, caps 200 mg', 1, 37.00, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (5, 9,  'Iodine tincture',       2,  0.60, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (5, 10, 'Rhynol',                2,  5.00, 0.0)");
 
-            // ── Scenario 11e — debit card sale, 3 March 2026 ─────────────────────
+            // Scenario 11e: debit card sale, 3 March 2026
             stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, card_type, card_first_four, card_last_four, card_expiry, is_paid) VALUES (6, 0, '2026-03-03T00:00:00', 0.0, 'DEBIT_CARD', 'Visa', '4222', '2222', '11/27', 1)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (6, 11, 'Ospen',     2, 21.00, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (6, 13, 'Vitamin C', 2,  2.40, 0.0)");
 
-            // ── Scenario 11f — cash sale, 3 March 2026 ───────────────────────────
+            // Scenario 11f: cash sale, 3 March 2026
             stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, is_paid) VALUES (7, 0, '2026-03-03T00:00:00', 0.0, 'CASH', 1)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (7, 12, 'Amopen',     3, 30.00, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (7, 14, 'Vitamin B12',2,  2.60, 0.0)");
 
-            // ── Scenario 12 — Glynne Morrison account sale, 5 March 2026 ─────────
-            // paid in full on 29 March (scenario 14) — is_paid=1 set directly, no UPDATE needed
+            // Scenario 12: Glynne Morrison account sale, 5 March 2026
+            // paid in full on 29 March (scenario 14), is_paid=1 set directly, no UPDATE needed
             stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, is_paid) VALUES (8, 2, '2026-03-05T00:00:00', 0.0, 'CASH', 1)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (8, 2,  'Aspirin',               2,  1.00, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (8, 3,  'Analgin',               3,  2.40, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (8, 4,  'Celebrex, caps 100 mg', 2, 20.00, 0.0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (8, 6,  'Retin-A Tretin, 30 g',  2, 50.00, 0.0)");
 
-            // ── Scenario 13 — Eva Bauyer account sale, 1 April 2026 ──────────────
+            // Scenario 13: Eva Bauyer account sale, 1 April 2026
             // 3% discount applied: 73.40 × 0.97 = £71.20 charged to account
             stmt.execute("INSERT OR IGNORE INTO sales (id, customer_id, sale_date, discount_percent, payment_method, is_paid) VALUES (9, 1, '2026-04-01T00:00:00', 0.03, 'CASH', 0)");
             stmt.execute("INSERT OR IGNORE INTO sale_lines (sale_id, item_id, item_name, quantity, unit_price, vat_rate) VALUES (9, 11, 'Ospen',                1, 21.00, 0.0)");

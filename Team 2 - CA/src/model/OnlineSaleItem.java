@@ -1,7 +1,7 @@
 package model;
 
 // one line item in an online sale received from ipos-pu
-// simple dto — just item id and quantity, price is handled by ca's stock data
+// simple dto, just item id and quantity, price is handled by ca's stock data
 public class OnlineSaleItem {
 
     private final int itemId;
@@ -10,7 +10,7 @@ public class OnlineSaleItem {
     public OnlineSaleItem(int itemId, int quantity) {
         if (itemId  <= 0) throw new IllegalArgumentException("item id must be positive");
         if (quantity <= 0) throw new IllegalArgumentException("quantity must be positive");
-        this.itemId   = itemId;
+        this.itemId = itemId;
         this.quantity = quantity;
     }
 

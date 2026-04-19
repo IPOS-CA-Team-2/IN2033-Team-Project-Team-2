@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-// sqlite implementation of wholesale order persistence
+// sqlite implementation of the wholesale order repository
 public class WholesaleOrderRepositoryImpl implements WholesaleOrderRepository {
 
     @Override

@@ -10,9 +10,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// mock implementation of ISaGateway — stores orders locally in sqlite
+// mock implementation of ISaGateway, stores orders locally in sqlite
 // simulates what ipos-sa would do when we submit or query orders
-// to integrate with the real sa system: implement ISaGateway using their api and inject it instead
+// to use the real SA system, implement ISaGateway with their API and pass it in instead
 public class MockSaGateway implements ISaGateway {
 
     private final WholesaleOrderRepositoryImpl repo;
@@ -23,7 +23,7 @@ public class MockSaGateway implements ISaGateway {
 
     @Override
     public WholesaleOrder submitOrder(List<OrderLine> lines) {
-        // create a new pending order and persist it
+        // create a new pending order and save it
         WholesaleOrder order = new WholesaleOrder(lines);
         int id = repo.save(order);
         if (id == -1) return null;
@@ -49,7 +49,7 @@ public class MockSaGateway implements ISaGateway {
 
     @Override
     public Map<String, Object> getInvoiceByOrderId(int saOrderId) {
-        // stub — returns mock invoice data so the View Invoice dialog works in mock mode
+        // stub, returns mock invoice data so the View Invoice dialog works in mock mode
         Map<String, Object> inv = new HashMap<>();
         inv.put("invoiceNumber",         "INV-MOCK-" + saOrderId);
         inv.put("issuedAt",              LocalDate.now().toString());
@@ -64,7 +64,7 @@ public class MockSaGateway implements ISaGateway {
 
     @Override
     public Map<String, Object> getOutstandingBalance() {
-        // stub — returns zero balance so Check Balance dialog works in mock mode
+        // stub, returns zero balance so Check Balance dialog works in mock mode
         Map<String, Object> balance = new HashMap<>();
         balance.put("outstandingTotal",    0.0);
         balance.put("currency",            "GBP");

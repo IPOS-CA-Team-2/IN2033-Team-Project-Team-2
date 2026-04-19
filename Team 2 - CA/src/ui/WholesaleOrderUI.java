@@ -17,19 +17,19 @@ import java.util.List;
 import java.util.Map;
 
 // wholesale order management screen
-// pharmacists and managers can place orders with infopharma (sa),
-// track order status, mark deliveries as received, and simulate pu online sales
+// pharmacists and managers can place orders with InfoPharma (SA),
+// track order status, mark deliveries as received, and simulate PU online sales
 public class WholesaleOrderUI extends JPanel {
 
-    private final User                  currentUser;
+    private final User currentUser;
     private final WholesaleOrderService orderService;
 
     private DefaultTableModel tableModel;
-    private JTable            orderTable;
-    private JButton           deliveredBtn;
-    private JButton           statusBtn;
-    private JButton           invoiceBtn;
-    private JButton           balanceBtn;
+    private JTable orderTable;
+    private JButton deliveredBtn;
+    private JButton statusBtn;
+    private JButton invoiceBtn;
+    private JButton balanceBtn;
 
     private static final int COL_ID       = 0;
     private static final int COL_DATE     = 1;
@@ -40,8 +40,8 @@ public class WholesaleOrderUI extends JPanel {
     private static final int COL_COURIER  = 6;
 
     public WholesaleOrderUI(User user) {
-        this.currentUser  = user;
-        // services come from AppContext — wired once in Main, shared across all screens
+        this.currentUser = user;
+        // services come from AppContext, set up once in Main and shared across screens
         this.orderService = AppContext.getOrderService();
 
         setLayout(new BorderLayout());
@@ -51,50 +51,33 @@ public class WholesaleOrderUI extends JPanel {
         add(buildTablePanel(), BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
 
-        // register for live refresh — when sa pushes a status update via CaApiServer,
-        // AppContext.notifyOrderRefresh() calls loadOrders() on the EDT automatically
+        // register for live refresh so the table updates automatically
+        // when SA pushes a status update through CaApiServer
         AppContext.addOrderRefreshListener(this::loadOrders);
 
         loadOrders();
     }
 
     private JPanel buildHeader() {
-        // adds search bar on the right of the top bar
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(UITheme.DARK_HEADER);
         header.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
 
-
-        // adds management text on the left of the top bar
-        // add a filler cause it looks empty without it
         JLabel titleLabel = new JLabel("Wholesale Orders — InfoPharma (SA)");
         titleLabel.setFont(UITheme.FONT_TITLE);
         titleLabel.setForeground(Color.WHITE);
 
-
-
-        // adds search bar on the right of the top bar
         JLabel searchLabel = new JLabel("Search: ");
         searchLabel.setFont(UITheme.FONT_BOLD);
         searchLabel.setForeground(Color.WHITE);
-
-
 
         JTextField searchField = new JTextField(18);
         UITheme.styleTextField(searchField);
 
         searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            public void insertUpdate (javax.swing.event.DocumentEvent e) {
-                filterTable(searchField.getText());
-            }
-
-            public void removeUpdate (javax.swing.event.DocumentEvent e) {
-                filterTable(searchField.getText());
-            }
-
-            public void changedUpdate(javax.swing.event.DocumentEvent e) {
-                filterTable(searchField.getText());
-            }
+            public void insertUpdate(javax.swing.event.DocumentEvent e)  { filterTable(searchField.getText()); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e)  { filterTable(searchField.getText()); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { filterTable(searchField.getText()); }
         });
 
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
@@ -102,12 +85,10 @@ public class WholesaleOrderUI extends JPanel {
         searchPanel.add(searchLabel);
         searchPanel.add(searchField);
 
-
         header.add(searchPanel, BorderLayout.EAST);
         header.add(titleLabel, BorderLayout.WEST);
 
         return header;
-
     }
 
     private void filterTable(String query) {
@@ -207,10 +188,10 @@ public class WholesaleOrderUI extends JPanel {
         panel.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
 
         JButton placeBtn   = UITheme.successBtn("Place New Order");
-        deliveredBtn       = UITheme.primaryBtn("Mark as Delivered");
-        statusBtn          = UITheme.primaryBtn("Update Status");
-        invoiceBtn         = UITheme.secondaryBtn("View Invoice");
-        balanceBtn         = UITheme.secondaryBtn("Check Balance");
+        deliveredBtn = UITheme.primaryBtn("Mark as Delivered");
+        statusBtn = UITheme.primaryBtn("Update Status");
+        invoiceBtn = UITheme.secondaryBtn("View Invoice");
+        balanceBtn = UITheme.secondaryBtn("Check Balance");
         JButton puSimBtn   = UITheme.secondaryBtn("Simulate PU Online Sale");
         JButton refreshBtn = UITheme.secondaryBtn("Refresh");
 
@@ -242,7 +223,7 @@ public class WholesaleOrderUI extends JPanel {
         return panel;
     }
 
-    // load all orders into the table — public so AppContext refresh listeners can call it
+    // loads all orders into the table, public so AppContext refresh listeners can call it
     public void loadOrders() {
         tableModel.setRowCount(0);
         for (WholesaleOrder order : orderService.getAllOrders()) {
@@ -267,8 +248,8 @@ public class WholesaleOrderUI extends JPanel {
         return (int) tableModel.getValueAt(row, COL_ID);
     }
 
-    // wrap the HTTP submission in a SwingWorker so it doesn't block the EDT
-    // the Place Order button is disabled while the call is in flight
+    // runs the HTTP submission on a SwingWorker so it doesn't block the UI
+    // the Place Order button is disabled while the request is in flight
     private void handlePlaceOrder(JButton placeBtn) {
         List<StockItem> stock = AppContext.getStockService().getAllStock();
         if (stock.isEmpty()) {
@@ -415,10 +396,10 @@ public class WholesaleOrderUI extends JPanel {
             if (JOptionPane.showConfirmDialog(this, fields, "Dispatch Details",
                     JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) return;
 
-            courier      = courierField.getText().trim();
-            courierRef   = refField.getText().trim();
+            courier = courierField.getText().trim();
+            courierRef = refField.getText().trim();
             try {
-                dispatchDate     = LocalDate.parse(dispatchField.getText().trim());
+                dispatchDate = LocalDate.parse(dispatchField.getText().trim());
                 expectedDelivery = LocalDate.parse(expectedField.getText().trim());
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Invalid date format. Use YYYY-MM-DD.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -430,8 +411,8 @@ public class WholesaleOrderUI extends JPanel {
         loadOrders();
     }
 
-    // fetch invoice from SA for the selected order and display it in a scrollable dialog
-    // runs on a SwingWorker so the HTTP call never blocks the EDT
+    // fetches the invoice from SA for the selected order and shows it in a scrollable dialog
+    // runs on a SwingWorker so the HTTP call doesn't block the UI
     private void handleViewInvoice() {
         int orderId = getSelectedOrderId();
         if (orderId == -1) return;
@@ -564,7 +545,7 @@ public class WholesaleOrderUI extends JPanel {
         }.execute();
     }
 
-    // query outstanding balance from SA and display in a dialog with colour-coded warning
+    // queries the outstanding balance from SA and shows it in a colour-coded dialog
     private void handleCheckBalance() {
         balanceBtn.setEnabled(false);
         new SwingWorker<java.util.Map<String, Object>, Void>() {

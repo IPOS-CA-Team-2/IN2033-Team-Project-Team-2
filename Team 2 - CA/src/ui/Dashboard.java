@@ -77,8 +77,6 @@ public class Dashboard extends JPanel {
         return tabs;
     }
 
-    // builds a centered column of menu buttons with consistent styling
-    // builds a centered column of menu buttons with consistent styling
     private void buildAdminMenu(JTabbedPane tabs) {
         tabs.addTab("Manage Staff Users", new StaffManagementUI());
         tabs.addTab("View Stock", new StockManagementUI());

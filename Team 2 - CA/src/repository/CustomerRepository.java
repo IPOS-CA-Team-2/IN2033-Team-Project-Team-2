@@ -17,7 +17,7 @@ public interface CustomerRepository {
     // pharmacist looks up customer by account number at point of sale
     Customer findByAccountNumber(String accountNumber);
 
-    // insert new account holder — returns generated id
+    // insert new account holder, returns generated id
     int save(Customer customer);
 
     // full update of an existing customer record
@@ -26,7 +26,7 @@ public interface CustomerRepository {
     // update just the balance and monthly spend after a sale or payment
     boolean updateBalance(int customerId, double newBalance, double newMonthlySpend);
 
-    // update account status and reminder flags — called by account status engine
+    // update account status and reminder flags, called by account status engine
     boolean updateStatus(int customerId, AccountStatus status,
                          String status1st, String status2nd,
                          LocalDate date1st, LocalDate date2nd, LocalDate statementDate);
