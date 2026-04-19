@@ -11,9 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-/**
- * Concrete implementation of UserRepository backed by SQLite.
- */
+// sqlite implementation of user repository
 public class UserRepositoryImpl implements UserRepository {
 
     @Override

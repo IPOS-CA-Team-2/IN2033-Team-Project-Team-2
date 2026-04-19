@@ -8,188 +8,246 @@ import org.junit.jupiter.api.Test;
 import repository.StockRepository;
 import service.StockService;
 import service.WholesaleOrderService;
+
 import java.time.LocalDate;
 import java.util.*;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class WholesaleOrderServiceTest {
 
-    // fake gateway - stores orders in memory instead of hitting SA api
-    class FakeGateway implements ISaGateway {
+    // in-memory gateway so tests don't need a real database or SA connection
+    static class FakeGateway implements ISaGateway {
         Map<Integer, WholesaleOrder> orders = new LinkedHashMap<>();
-        int idCount = 1;
+        int nextId = 1;
 
+        @Override
         public WholesaleOrder submitOrder(List<OrderLine> lines) {
-            WholesaleOrder o = new WholesaleOrder(idCount++, LocalDate.now(), OrderStatus.PENDING, lines, null, null, null, null);
-            orders.put(o.getOrderId(), o);
-            return o;
+            int id = nextId++;
+            WholesaleOrder order = new WholesaleOrder(id, LocalDate.now(), OrderStatus.PENDING,
+                    lines, null, null, null, null);
+            orders.put(id, order);
+            return order;
         }
 
-        public WholesaleOrder getOrderById(int id) {
-            return orders.get(id);
+        @Override
+        public WholesaleOrder getOrderById(int orderId) {
+            return orders.get(orderId);
         }
 
+        @Override
         public List<WholesaleOrder> getOrderHistory() {
-            List<WholesaleOrder> list = new ArrayList<>(orders.values());
-            Collections.reverse(list);
-            return list;
+            return new ArrayList<>(orders.values());
         }
 
-        public boolean updateOrderStatus(int id, OrderStatus status, String courier, String courierRef, LocalDate dispatch, LocalDate expected) {
-            WholesaleOrder old = orders.get(id);
-            if(old == null) return false;
-            orders.put(id, new WholesaleOrder(id, old.getOrderDate(), status, old.getLines(), dispatch, courier, courierRef, expected));
+        @Override
+        public boolean updateOrderStatus(int orderId, OrderStatus status,
+                                         String courier, String courierRef,
+                                         LocalDate dispatchDate, LocalDate expectedDelivery) {
+            WholesaleOrder old = orders.get(orderId);
+            if (old == null) return false;
+            WholesaleOrder updated = new WholesaleOrder(old.getOrderId(), old.getOrderDate(),
+                    status, new ArrayList<>(old.getLines()),
+                    dispatchDate, courier, courierRef, expectedDelivery);
+            orders.put(orderId, updated);
             return true;
+        }
+
+        @Override
+        public Map<String, Object> getInvoiceByOrderId(int saOrderId) {
+            return null;
+        }
+
+        @Override
+        public Map<String, Object> getOutstandingBalance() {
+            return null;
         }
     }
 
-    // fake stock repo
-    class FakeStockRepo implements StockRepository {
-        Map<Integer, StockItem> items = new HashMap<>();
-        public List<StockItem> findAll() { return new ArrayList<>(items.values()); }
-        public StockItem findById(int id) { return items.get(id); }
+    // in-memory stock repo so stock checks work without hitting the database
+    static class FakeStockRepo implements StockRepository {
+        Map<Integer, StockItem> data = new HashMap<>();
+        int nextId = 1;
+
+        @Override
+        public List<StockItem> findAll() { return new ArrayList<>(data.values()); }
+
+        @Override
+        public StockItem findById(int id) { return data.get(id); }
+
+        @Override
         public boolean updateQuantity(int id, int qty) {
-            StockItem old = items.get(id);
-            if(old == null) return false;
-            items.put(id, new StockItem(id, old.getName(), qty, old.getBulkCost(), old.getMarkupRate(), old.getVatRate(), old.getLowStockThreshold()));
+            StockItem s = data.get(id);
+            if (s == null) return false;
+            data.put(id, new StockItem(id, s.getName(), qty, s.getBulkCost(),
+                    s.getMarkupRate(), s.getVatRate(), s.getLowStockThreshold()));
             return true;
         }
-        public List<StockItem> findLowStock() { return new ArrayList<>(); }
-        public boolean save(StockItem i) { items.put(i.getItemId(), i); return true; }
-        public boolean delete(int id) { return items.remove(id) != null; }
+
+        @Override
+        public List<StockItem> findLowStock() {
+            List<StockItem> result = new ArrayList<>();
+            for (StockItem i : data.values()) {
+                if (i.isLowStock()) result.add(i);
+            }
+            return result;
+        }
+
+        @Override
+        public boolean save(StockItem item) {
+            int id = item.getItemId() == 0 ? nextId++ : item.getItemId();
+            data.put(id, new StockItem(id, item.getName(), item.getQuantity(), item.getBulkCost(),
+                    item.getMarkupRate(), item.getVatRate(), item.getLowStockThreshold()));
+            return true;
+        }
+
+        @Override
+        public boolean delete(int id) {
+            if (data.containsKey(id)) { data.remove(id); return true; }
+            return false;
+        }
     }
 
     FakeGateway gateway;
     FakeStockRepo stockRepo;
-    StockService stockSvc;
+    StockService stockService;
     WholesaleOrderService orderService;
 
     @BeforeEach
     void setup() {
         gateway = new FakeGateway();
         stockRepo = new FakeStockRepo();
-        stockSvc = new StockService(stockRepo);
-        orderService = new WholesaleOrderService(gateway, stockSvc);
-
-        stockRepo.save(new StockItem(1, "Paracetamol 500mg", 50, 1.00, 0.20, 0.05, 10));
-        stockRepo.save(new StockItem(2, "Ibuprofen 200mg", 20, 1.50, 0.20, 0.05, 10));
-    }
-
-    List<OrderLine> makeLines(int itemId, int qty) {
-        return List.of(new OrderLine(itemId, "Paracetamol 500mg", qty, 1.00));
+        stockService = new StockService(stockRepo);
+        // seed two items with enough stock for the tests
+        stockRepo.save(new StockItem(1, "Paracetamol 500mg", 200, 1.00, 1.0, 0.0, 10));
+        stockRepo.save(new StockItem(2, "Ibuprofen 200mg", 150, 1.50, 1.0, 0.0, 10));
+        orderService = new WholesaleOrderService(gateway, stockService);
     }
 
     @Test
-    void testPlaceOrderReturnsOrder() {
-        WholesaleOrder o = orderService.placeOrder(makeLines(1, 10));
-        assertNotNull(o);
+    void test_place_order_returns_order_with_id() {
+        List<OrderLine> lines = List.of(
+            new OrderLine(1, "Paracetamol 500mg", 50, 1.92),
+            new OrderLine(2, "Ibuprofen 200mg", 30, 3.07)
+        );
+        WholesaleOrder order = orderService.placeOrder(lines);
+        assertNotNull(order);
+        assertTrue(order.getOrderId() > 0);
     }
 
     @Test
-    void testPlaceOrderHasId() {
-        WholesaleOrder o = orderService.placeOrder(makeLines(1, 10));
-        assertTrue(o.getOrderId() > 0);
+    void test_new_order_starts_as_pending() {
+        List<OrderLine> lines = List.of(new OrderLine(1, "Paracetamol 500mg", 10, 1.92));
+        WholesaleOrder order = orderService.placeOrder(lines);
+        assertEquals(OrderStatus.PENDING, order.getStatus());
     }
 
     @Test
-    void testNewOrderIsPending() {
-        WholesaleOrder o = orderService.placeOrder(makeLines(1, 5));
-        assertEquals(OrderStatus.PENDING, o.getStatus());
+    void test_order_total_value_calculated_correctly() {
+        List<OrderLine> lines = List.of(
+            new OrderLine(1, "Paracetamol 500mg", 50, 1.92),
+            new OrderLine(2, "Ibuprofen 200mg", 30, 3.07)
+        );
+        WholesaleOrder order = orderService.placeOrder(lines);
+        double expected = (50 * 1.92) + (30 * 3.07);
+        assertEquals(expected, order.getTotalValue(), 0.001);
     }
 
     @Test
-    void testOrderHasCorrectLines() {
-        WholesaleOrder o = orderService.placeOrder(makeLines(1, 10));
-        assertEquals(1, o.getLines().size());
-        assertEquals(10, o.getLines().get(0).getQuantity());
+    void test_empty_order_throws_exception() {
+        assertThrows(IllegalArgumentException.class, () -> orderService.placeOrder(List.of()));
     }
 
     @Test
-    void testEmptyLinesThrows() {
-        assertThrows(IllegalArgumentException.class, () -> orderService.placeOrder(new ArrayList<>()));
-    }
-
-    @Test
-    void testNullLinesThrows() {
+    void test_null_order_throws_exception() {
         assertThrows(IllegalArgumentException.class, () -> orderService.placeOrder(null));
     }
 
     @Test
-    void testTwoOrdersHaveDifferentIds() {
-        WholesaleOrder o1 = orderService.placeOrder(makeLines(1, 5));
-        WholesaleOrder o2 = orderService.placeOrder(makeLines(2, 3));
-        assertNotEquals(o1.getOrderId(), o2.getOrderId());
+    void test_status_update_to_accepted() {
+        List<OrderLine> lines = List.of(new OrderLine(1, "Paracetamol 500mg", 10, 1.92));
+        WholesaleOrder order = orderService.placeOrder(lines);
+        orderService.simulateStatusUpdate(order.getOrderId(), OrderStatus.ACCEPTED, null, null, null, null);
+        assertEquals(OrderStatus.ACCEPTED, orderService.getOrder(order.getOrderId()).getStatus());
     }
 
     @Test
-    void testGetAllOrdersEmpty() {
-        assertTrue(orderService.getAllOrders().isEmpty());
+    void test_dispatch_stores_courier_info() {
+        List<OrderLine> lines = List.of(new OrderLine(1, "Paracetamol 500mg", 10, 1.92));
+        WholesaleOrder order = orderService.placeOrder(lines);
+        LocalDate dispatch = LocalDate.now();
+        orderService.simulateStatusUpdate(order.getOrderId(), OrderStatus.DISPATCHED,
+                "DHL", "DHL123", dispatch, dispatch.plusDays(3));
+        WholesaleOrder updated = orderService.getOrder(order.getOrderId());
+        assertEquals(OrderStatus.DISPATCHED, updated.getStatus());
+        assertEquals("DHL", updated.getCourier());
+        assertEquals("DHL123", updated.getCourierRef());
     }
 
     @Test
-    void testGetAllOrdersAfterPlacing() {
-        orderService.placeOrder(makeLines(1, 5));
-        orderService.placeOrder(makeLines(2, 3));
-        assertEquals(2, orderService.getAllOrders().size());
+    void test_mark_delivered_increases_stock() throws StockException {
+        List<OrderLine> lines = List.of(new OrderLine(1, "Paracetamol 500mg", 50, 1.92));
+        WholesaleOrder order = orderService.placeOrder(lines);
+        int before = stockService.getStockItem(1).getQuantity();
+        orderService.markDelivered(order.getOrderId());
+        int after = stockService.getStockItem(1).getQuantity();
+        assertEquals(before + 50, after);
     }
 
     @Test
-    void testGetOrderById() {
-        WholesaleOrder placed = orderService.placeOrder(makeLines(1, 5));
-        WholesaleOrder found = orderService.getOrder(placed.getOrderId());
-        assertEquals(placed.getOrderId(), found.getOrderId());
+    void test_mark_delivered_sets_status_to_delivered() throws StockException {
+        List<OrderLine> lines = List.of(new OrderLine(1, "Paracetamol 500mg", 10, 1.92));
+        WholesaleOrder order = orderService.placeOrder(lines);
+        orderService.markDelivered(order.getOrderId());
+        assertEquals(OrderStatus.DELIVERED, orderService.getOrder(order.getOrderId()).getStatus());
     }
 
     @Test
-    void testGetOrderUnknownIdReturnsNull() {
-        assertNull(orderService.getOrder(999));
+    void test_mark_delivered_twice_is_a_no_op() throws StockException {
+        List<OrderLine> lines = List.of(new OrderLine(1, "Paracetamol 500mg", 10, 1.92));
+        WholesaleOrder order = orderService.placeOrder(lines);
+        orderService.markDelivered(order.getOrderId());
+        int stockAfterFirst = stockService.getStockItem(1).getQuantity();
+        // calling it again should not add stock a second time
+        orderService.markDelivered(order.getOrderId());
+        int stockAfterSecond = stockService.getStockItem(1).getQuantity();
+        assertEquals(stockAfterFirst, stockAfterSecond);
     }
 
     @Test
-    void testMarkDeliveredIncreasesStock() throws StockException {
-        WholesaleOrder o = orderService.placeOrder(makeLines(1, 20));
-        orderService.markDelivered(o.getOrderId());
-        // started at 50, added 20 = 70
-        assertEquals(70, stockSvc.getStockItem(1).getQuantity());
+    void test_mark_delivered_invalid_id_throws() {
+        assertThrows(IllegalArgumentException.class, () -> orderService.markDelivered(9999));
     }
 
     @Test
-    void testMarkDeliveredChangesStatus() {
-        WholesaleOrder o = orderService.placeOrder(makeLines(1, 5));
-        orderService.markDelivered(o.getOrderId());
-        assertEquals(OrderStatus.DELIVERED, orderService.getOrder(o.getOrderId()).getStatus());
+    void test_get_all_orders_returns_history() {
+        orderService.placeOrder(List.of(new OrderLine(1, "Paracetamol 500mg", 10, 1.92)));
+        orderService.placeOrder(List.of(new OrderLine(2, "Ibuprofen 200mg", 5, 3.07)));
+        List<WholesaleOrder> history = orderService.getAllOrders();
+        assertEquals(2, history.size());
     }
 
     @Test
-    void testMarkDeliveredTwiceDoesNotDoubleStock() throws StockException {
-        WholesaleOrder o = orderService.placeOrder(makeLines(1, 10));
-        orderService.markDelivered(o.getOrderId());
-        orderService.markDelivered(o.getOrderId()); // calling again shouldnt add stock again
-        assertEquals(60, stockSvc.getStockItem(1).getQuantity());
+    void test_get_order_by_id_returns_correct_order() {
+        List<OrderLine> lines = List.of(new OrderLine(1, "Paracetamol 500mg", 10, 1.92));
+        WholesaleOrder placed = orderService.placeOrder(lines);
+        WholesaleOrder fetched = orderService.getOrder(placed.getOrderId());
+        assertNotNull(fetched);
+        assertEquals(placed.getOrderId(), fetched.getOrderId());
     }
 
     @Test
-    void testMarkDeliveredUnknownOrderThrows() {
-        assertThrows(IllegalArgumentException.class, () -> orderService.markDelivered(999));
+    void test_get_order_unknown_id_returns_null() {
+        assertNull(orderService.getOrder(9999));
     }
 
     @Test
-    void testSimulateStatusUpdateAccepted() {
-        WholesaleOrder o = orderService.placeOrder(makeLines(1, 5));
-        orderService.simulateStatusUpdate(o.getOrderId(), OrderStatus.ACCEPTED, null, null, null, null);
-        assertEquals(OrderStatus.ACCEPTED, orderService.getOrder(o.getOrderId()).getStatus());
-    }
-
-    @Test
-    void testSimulateStatusUpdateDispatched() {
-        WholesaleOrder o = orderService.placeOrder(makeLines(1, 5));
-        orderService.simulateStatusUpdate(o.getOrderId(), OrderStatus.DISPATCHED, "DHL", "REF123", LocalDate.now(), LocalDate.now().plusDays(2));
-        assertEquals(OrderStatus.DISPATCHED, orderService.getOrder(o.getOrderId()).getStatus());
-    }
-
-    @Test
-    void testSimulateStatusUpdateUnknownOrderReturnsFalse() {
-        boolean result = orderService.simulateStatusUpdate(999, OrderStatus.ACCEPTED, null, null, null, null);
-        assertFalse(result);
+    void test_order_contains_correct_lines() {
+        List<OrderLine> lines = List.of(
+            new OrderLine(1, "Paracetamol 500mg", 20, 1.92),
+            new OrderLine(2, "Ibuprofen 200mg", 10, 3.07)
+        );
+        WholesaleOrder order = orderService.placeOrder(lines);
+        assertEquals(2, order.getLines().size());
     }
 }

@@ -1,7 +1,7 @@
 package model;
 
 // represents one stock item in the local pharmacy inventory
-// bulk cost is what we pay infopharma — unit price is derived via markup rate
+// bulk cost is the supplier price per pack, unit price adds the markup on top
 public class StockItem {
 
     private final int itemId;
@@ -40,13 +40,13 @@ public class StockItem {
         this.lowStockThreshold = lowStockThreshold;
     }
 
-    // backwards-compatible constructor — new fields default to empty/0
+    // backwards-compatible constructor, new fields default to empty/0
     public StockItem(int itemId, String name, int quantity, double bulkCost,
                      double markupRate, double vatRate, int lowStockThreshold) {
         this(itemId, "", name, "", "", 0, quantity, bulkCost, markupRate, vatRate, lowStockThreshold);
     }
 
-    // retail price before vat — bulk cost with markup applied
+    // retail price before vat, bulk cost with markup applied
     public double getUnitPrice() {
         return bulkCost * (1 + markupRate);
     }

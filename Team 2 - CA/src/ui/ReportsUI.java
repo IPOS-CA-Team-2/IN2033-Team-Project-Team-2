@@ -16,8 +16,8 @@ import java.util.Calendar;
 import java.util.Date;
 
 
-// manager-only reports screen — three tabs: turnover, stock availability, aggregated debt
-// each tab pulls data from ReportService and displays it in a styled table with summary footer
+// reports screen with three tabs: turnover, stock availability, and aggregated debt
+// each tab pulls data from ReportService and shows a styled table with a summary footer
 public class ReportsUI extends JPanel {
 
     private final ReportService reportService;
@@ -41,9 +41,9 @@ public class ReportsUI extends JPanel {
     private JTable debtTable;
 
     public ReportsUI(User user, int initialTab) {
-        SaleRepository          saleRepo  = new SaleRepositoryImpl();
-        CustomerRepository      custRepo  = new CustomerRepositoryImpl();
-        StockService            stockSvc  = new StockService(new StockRepositoryImpl());
+        SaleRepository saleRepo = new SaleRepositoryImpl();
+        CustomerRepository custRepo = new CustomerRepositoryImpl();
+        StockService stockSvc = new StockService(new StockRepositoryImpl());
         WholesaleOrderRepository orderRepo = new WholesaleOrderRepositoryImpl();
         this.reportService = new ReportService(saleRepo, custRepo, stockSvc, orderRepo);
 
@@ -64,7 +64,7 @@ public class ReportsUI extends JPanel {
         refreshStock();
     }
 
-    // ---- turnover tab ----
+    // turnover tab
 
     private JPanel buildTurnoverTab() {
         JPanel panel = new JPanel(new BorderLayout(0, 8));
@@ -78,7 +78,7 @@ public class ReportsUI extends JPanel {
         Date thirtyAgo = cal.getTime();
 
         fromSpinner = makeDateSpinner(thirtyAgo);
-        toSpinner   = makeDateSpinner(today);
+        toSpinner = makeDateSpinner(today);
 
         JButton generateBtn = UITheme.primaryBtn("Generate Report");
         generateBtn.addActionListener(e -> generateTurnover());
@@ -202,7 +202,7 @@ public class ReportsUI extends JPanel {
         ));
     }
 
-    // ---- stock tab ----
+    // stock tab
 
     private JPanel buildStockTab() {
         JPanel panel = new JPanel(new BorderLayout(0, 8));
@@ -277,7 +277,7 @@ public class ReportsUI extends JPanel {
         stockFooter.setText(String.format("  Total stock value: £%.2f", r.totalStockValue));
     }
 
-    // ---- debt tab ----
+    // debt tab
 
     private JPanel buildDebtTab() {
         JPanel panel = new JPanel(new BorderLayout(0, 8));
@@ -441,7 +441,7 @@ public class ReportsUI extends JPanel {
         dialog.setVisible(true);
     }
 
-    // ---- helpers ----
+    // helpers
 
     private JSpinner makeDateSpinner(Date initial) {
         SpinnerDateModel model = new SpinnerDateModel(initial, null, null, Calendar.DAY_OF_MONTH);

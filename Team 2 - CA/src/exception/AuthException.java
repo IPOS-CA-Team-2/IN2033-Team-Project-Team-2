@@ -1,9 +1,7 @@
 package exception;
 
-/**
- * Thrown by LoginService when authentication fails.
- * Carries a reason so the UI layer can show the correct message.
- */
+// thrown by LoginService when authentication fails
+// carries a reason so the UI can show the right message
 public class AuthException extends Exception {
 
     public enum Reason {

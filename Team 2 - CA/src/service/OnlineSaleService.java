@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 // handles incoming online sale events from ipos-pu
-// deducts stock for each item and persists a record to online_sales
+// deducts stock for each item and saves a record to online_sales
 public class OnlineSaleService {
 
     private final StockService stockService;
@@ -23,7 +23,7 @@ public class OnlineSaleService {
         this.stockService = stockService;
     }
 
-    // process an online sale — deducts stock and saves the record
+    // handles an incoming online sale: deducts stock and saves the record
     // returns true if all items were fully deducted
     public boolean processOnlineSale(OnlineSale sale) {
         if (sale == null || sale.getItems().isEmpty()) return false;
@@ -44,7 +44,7 @@ public class OnlineSaleService {
         return fullyApplied;
     }
 
-    // saves the incoming sale to online_sales + online_sale_items tables
+    // writes the incoming sale to online_sales + online_sale_items tables
     private void persistSale(OnlineSale sale, boolean fullyApplied) {
         String saleSql = """
             INSERT OR IGNORE INTO online_sales
@@ -84,7 +84,7 @@ public class OnlineSaleService {
             }
 
             conn.commit();
-            System.out.println("[OnlineSaleService] Persisted online sale " + sale.getPuOrderId()
+            System.err.println("[OnlineSaleService] Persisted online sale " + sale.getPuOrderId()
                 + " (fullyApplied=" + fullyApplied + ")");
 
         } catch (SQLException e) {

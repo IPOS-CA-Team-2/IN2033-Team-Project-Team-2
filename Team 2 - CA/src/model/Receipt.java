@@ -8,19 +8,19 @@ import java.time.format.DateTimeFormatter;
 // for cash/walk-in customers it formats as a simple till receipt
 public class Receipt {
 
-    // pharmacy details pulled from configurable settings — managers can update via templates screen
+    // pharmacy details pulled from configurable settings, managers can update via templates screen
 
     private final String receiptNumber;
     private final Sale sale;
     private final String cashierName;
     private final LocalDateTime issuedAt;
 
-    // optional — only set for account customers
+    // optional, only set for account customers
     private final String customerName;
     private final String customerAddress;
     private final String accountNumber;
 
-    // constructor for account customers — full invoice format
+    // constructor for account customers, full invoice format
     public Receipt(String receiptNumber, Sale sale, String cashierName,
                    String customerName, String customerAddress, String accountNumber) {
         if (receiptNumber == null || receiptNumber.isBlank()) throw new IllegalArgumentException("receipt number cannot be blank");
@@ -36,12 +36,12 @@ public class Receipt {
         this.accountNumber = accountNumber;
     }
 
-    // constructor for walk-in cash customers — no account info needed
+    // constructor for walk-in cash customers, no account info needed
     public Receipt(String receiptNumber, Sale sale, String cashierName) {
         this(receiptNumber, sale, cashierName, null, null, null);
     }
 
-    // formats the receipt — invoice style for account customers, simple receipt for cash
+    // formats the receipt: invoice style for account customers, simple receipt for cash
     public String format() {
         if (customerName != null) {
             return formatInvoice();
@@ -50,12 +50,12 @@ public class Receipt {
         }
     }
 
-    // formal invoice letter per brief appendix 7 — used for account customers
+    // formal invoice letter per brief appendix 7, used for account customers
     private String formatInvoice() {
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("d MMMM yyyy");
         StringBuilder sb = new StringBuilder();
 
-        // address block — customer left, pharmacy right
+        // address block: customer left, pharmacy right
         String[] custLines = customerAddress != null ? customerAddress.split(",") : new String[]{};
 
         repository.ConfigRepository cfg = new repository.ConfigRepository(); // replaced with template text so everythign is modifiable

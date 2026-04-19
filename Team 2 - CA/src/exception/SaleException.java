@@ -9,7 +9,7 @@ public class SaleException extends Exception {
         EMPTY_SALE,             // no items in the sale
         INVALID_PAYMENT,        // card details missing for card payment
         CREDIT_LIMIT_EXCEEDED,  // account holder balance + purchase would exceed credit limit
-        SAVE_FAILED             // db error when persisting the sale
+        SAVE_FAILED             // db error when saving the sale
     }
 
     private final Reason reason;

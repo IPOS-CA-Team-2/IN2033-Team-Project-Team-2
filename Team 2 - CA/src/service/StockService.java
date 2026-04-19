@@ -40,7 +40,7 @@ public class StockService {
         return item;
     }
 
-    // e.g. new delivery arrived — bump the count up
+    // e.g. new delivery arrived, bumps the count up
     public void increaseStock(int itemId, int amount) throws StockException {
         validateItemId(itemId);
         validateQuantity(amount);
@@ -50,7 +50,7 @@ public class StockService {
         stockRepository.updateQuantity(itemId, newQuantity);
     }
 
-    // e.g. sale made — make sure we dont go negative
+    // e.g. sale made, makes sure we dont go negative
     public void decreaseStock(int itemId, int amount) throws StockException {
         validateItemId(itemId);
         validateQuantity(amount);
@@ -67,7 +67,7 @@ public class StockService {
         stockRepository.updateQuantity(itemId, newQuantity);
     }
 
-    // items below their threshold — pharmacist needs to reorder
+    // items below their threshold, the pharmacist needs to reorder these
     public List<StockItem> getLowStock() {
         List<StockItem> items = stockRepository.findLowStock();
         return items != null ? items : Collections.emptyList();
